@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+/* Dark by default (you are often playing in a dim room). Light only if the phone asks for it. */
+:root {
+  --bg: #0d0f12;
+  --surface: #171a1f;
+  --surface-2: #20242b;
+  --border: #2c313a;
+  --fg: #eef0f3;
+  --muted: #9aa3ae;
+  --accent: #f2a541;
+  --accent-fg: #1a1205;
+  --danger: #ff7b72;
+  --ok: #5fd38d;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f6f5f2;
+    --surface: #ffffff;
+    --surface-2: #efede8;
+    --border: #dcd8d0;
+    --fg: #16181c;
+    --muted: #5e6670;
+    --accent: #b86a00;
+    --accent-fg: #ffffff;
+    --danger: #c0392b;
+    --ok: #1e8a4c;
+    color-scheme: light;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-danger: var(--danger);
+  --color-ok: var(--ok);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--fg);
+  -webkit-tap-highlight-color: transparent;
+}
+
+@layer components {
+  /* Large tap targets: you are holding a guitar. */
+  .btn-primary {
+    @apply inline-flex min-h-14 items-center justify-center rounded-2xl bg-accent px-6 text-lg font-semibold text-accent-fg transition active:scale-[0.98] disabled:opacity-60;
+  }
+  .btn-ghost {
+    @apply inline-flex min-h-12 items-center justify-center rounded-2xl border border-border px-5 text-base font-medium text-fg transition active:scale-[0.98] disabled:opacity-60;
+  }
+  .field {
+    @apply min-h-14 w-full rounded-2xl border border-border bg-surface px-4 text-lg text-fg outline-none placeholder:text-muted focus:border-accent;
+  }
+  .card {
+    @apply rounded-3xl border border-border bg-surface p-5;
+  }
+}

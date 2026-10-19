@@ -1,0 +1,86 @@
+# Riyaaz
+
+A personal guitar practice app: planned sessions, a repertoire grouped by chord family,
+quick sets for any room, and performance mode. Single user. See [HANDOFF.md](HANDOFF.md)
+for the full brief and build order.
+
+Stack: Next.js 16 (App Router, Cache Components) + TypeScript + Tailwind 4, Supabase
+(Postgres, Auth, Storage), deployed on Vercel.
+
+## Status
+
+- [x] Step 1: project setup, schema with RLS, magic-link auth, seed
+- [ ] Step 2: repertoire screen
+- [ ] Step 3: theory engine, transpose and capo
+- [ ] Steps 4 to 10: see HANDOFF.md
+
+## Run locally
+
+```bash
+cp .env.example .env.local   # values for the Jam Supabase project are already filled in
+npm install
+npm run dev                  # http://localhost:3000
+```
+
+Checks: `npm test`, `npm run typecheck`, `npm run lint`, `npm run build`.
+
+## Project layout
+
+```
+supabase/migrations/   SQL schema, RLS policies, last_practised trigger, storage bucket
+src/proxy.ts           refreshes the session cookie and sends signed-out visitors to /login
+src/lib/supabase/      Supabase clients (server, browser, proxy)
+src/lib/auth.ts        requireUser(): use in every page and action that reads data
+src/lib/seed/          starter repertoire + skills loader (shared by the app and the CLI)
+src/data/              repertoire_seed.json exported from Notion
+src/app/login/         email + code sign-in
+src/app/auth/confirm/  where the magic link lands
+src/app/(app)/         signed-in screens with the bottom tab bar
+scripts/seed.ts        CLI seed (needs the service role key)
+```
+
+## One-time Supabase setup (dashboard)
+
+1. **Authentication > URL Configuration**
+   - Site URL: your Vercel production URL (for example `https://riyaaz.vercel.app`).
+   - Redirect URLs: add `http://localhost:3000/**` and `https://*.vercel.app/**`.
+2. **Authentication > Emails > Templates**. Paste this into both **Magic Link** and
+   **Confirm signup** (the first sign-in uses Confirm signup, later ones use Magic Link):
+
+   ```html
+   <h2>Sign in to Riyaaz</h2>
+   <p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email">Tap to sign in</a></p>
+   <p>Or type this code in the app: <strong>{{ .Token }}</strong></p>
+   ```
+
+   The link works in any browser. The code is for when the link opens somewhere other
+   than where you started (for example the installed app on your phone).
+3. After your first successful sign-in: **Authentication > Sign In / Providers**, turn
+   off **Allow new users to sign up**. The app already rejects every email except
+   `ALLOWED_EMAIL`; this closes the door at Supabase too.
+
+## Seeding
+
+Easiest: sign in, then tap **Load my repertoire** on the Today screen. It adds the 5
+families, 63 songs and the skills ladder using your own session.
+
+Or from a terminal (needs `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`, and you must have
+signed in once):
+
+```bash
+npm run seed
+```
+
+Both are safe to run again: they only add what is missing and never overwrite edits.
+
+## Deploy (Vercel)
+
+Import the GitHub repo in Vercel, then add these environment variables:
+`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `ALLOWED_EMAIL`,
+`APP_TIME_ZONE`. Do not add the service role key.
+
+## Rules
+
+- Never store or show full lyrics. A first-line hint is capped at 60 characters in the database.
+- No em dashes in UI copy or AI output.
+- The AI is never trusted for theory or transposition (step 3 adds a tested module for that).
