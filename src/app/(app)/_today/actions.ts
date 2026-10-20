@@ -5,41 +5,53 @@ import { z } from "zod"
 import { requireUser } from "@/lib/auth"
 import { addDays, todayISO } from "@/lib/dates"
 import { SESSION_FEELS } from "@/lib/domain"
-import { templatePlan } from "@/lib/plan/template"
-import { PLAN_MINUTES, type Plan, type PlanInput, type PlanMinutes } from "@/lib/plan/types"
+import { coachPlan, type CoachInput } from "@/lib/plan/coach"
+import { PLAN_MINUTES, type Plan, type PlanMinutes } from "@/lib/plan/types"
 import { createClient } from "@/lib/supabase/server"
 
-export type PlanResult = { ok: true; plan: Plan } | { ok: false; error: string }
+export type PlanResult =
+  | { ok: true; plan: Plan; source: "ai" | "template"; note?: string }
+  | { ok: false; error: string }
 
-/** Everything a plan is built from: songs, focus skill, last 14 days of sessions. */
-async function planInput(minutes: PlanMinutes): Promise<PlanInput> {
+/** Everything a plan is built from: songs, skills ladder, families, last 14 days of sessions. */
+async function planInput(minutes: PlanMinutes): Promise<CoachInput> {
   const supabase = await createClient()
   const today = todayISO()
-  const [songs, skills, sessions] = await Promise.all([
+  const [songs, skills, families, sessions] = await Promise.all([
     supabase.from("songs").select("id, title, status, family_id, last_practised"),
-    supabase.from("skills").select("name").eq("is_focus", true).limit(1),
-    supabase.from("sessions").select("date").gte("date", addDays(today, -13)),
+    supabase.from("skills").select("area, name, level, is_focus"),
+    supabase.from("families").select("id, name"),
+    supabase
+      .from("sessions")
+      .select("date, minutes, focus, how_it_went")
+      .gte("date", addDays(today, -13))
+      .order("date"),
   ])
-  const error = songs.error ?? skills.error ?? sessions.error
+  const error = songs.error ?? skills.error ?? families.error ?? sessions.error
   if (error) throw new Error(error.message)
 
+  const recent = sessions.data ?? []
   return {
     minutes,
     today,
-    focusSkill: skills.data?.[0]?.name ?? null,
+    focusSkill: skills.data?.find((s) => s.is_focus)?.name ?? null,
     songs: songs.data ?? [],
-    recentSessionDates: (sessions.data ?? []).map((s) => s.date),
+    recentSessionDates: recent.map((s) => s.date),
+    skills: skills.data ?? [],
+    familyNames: Object.fromEntries((families.data ?? []).map((f) => [f.id, f.name])),
+    recentSessions: recent,
   }
 }
 
+/** Asks the AI coach (OpenRouter, server side). Falls back to the built-in plan on any problem. */
 export async function planSession(minutes: number): Promise<PlanResult> {
   await requireUser()
   const parsed = z.union(PLAN_MINUTES.map((m) => z.literal(m))).safeParse(minutes)
   if (!parsed.success) return { ok: false, error: "Pick 10, 15, 20 or 30 minutes." }
   try {
     const input = await planInput(parsed.data as PlanMinutes)
-    // Step 6 swaps this for the AI coach, with this template as the fallback.
-    return { ok: true, plan: templatePlan(input) }
+    const { plan, source, note } = await coachPlan(input)
+    return { ok: true, plan, source, note }
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Could not plan a session." }
   }

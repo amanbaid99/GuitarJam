@@ -15,7 +15,8 @@ Stack: Next.js 16 (App Router, Cache Components) + TypeScript + Tailwind 4, Supa
 - [x] Theme: black / white / beige background and 6 accent colours (Settings, saved per device)
 - [x] Step 4: performance mode (family medleys and sets, swipe, keeps screen awake)
 - [x] Step 5: Today screen (week summary, timed session plan, metronome, one-tap session log)
-- [ ] Steps 6 to 10: see HANDOFF.md
+- [x] Step 6: AI practice coach via OpenRouter (free NVIDIA Nemotron), validated, falls back to the built-in plan
+- [ ] Steps 7 to 10: see HANDOFF.md
 
 ## Run locally
 
@@ -80,7 +81,11 @@ Both are safe to run again: they only add what is missing and never overwrite ed
 
 Import the GitHub repo in Vercel, then add these environment variables:
 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `ALLOWED_EMAIL`,
-`APP_TIME_ZONE`. Do not add the service role key.
+`APP_TIME_ZONE`, `OPENROUTER_API_KEY`. Do not add the service role key.
+
+AI runs through OpenRouter, server side only. Defaults: `nvidia/nemotron-3-super-120b-a12b:free`
+for text, `nvidia/nemotron-3.5-super-vl:free` for images. Override with `OPENROUTER_MODEL` /
+`OPENROUTER_VISION_MODEL`. If the AI is unavailable the app uses its built-in plan.
 
 ## Rules
 

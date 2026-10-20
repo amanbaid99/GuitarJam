@@ -7,7 +7,7 @@ import { useWakeLock } from "@/lib/use-wake-lock"
 import { planSession } from "./actions"
 import { LogSession, type LogSong } from "./log-session"
 
-type Saved = { date: string; plan: Plan }
+type Saved = { date: string; plan: Plan; source?: "ai" | "template"; note?: string }
 
 // Today's plan survives a reload or a trip to another tab.
 const planStore = createLocalStore<Saved | null>(
@@ -38,7 +38,7 @@ export function Planner({ today, focusSkill, songs, chordsById }: Props) {
     setError(null)
     startTransition(async () => {
       const res = await planSession(minutes)
-      if (res.ok) planStore.set({ date: today, plan: res.plan })
+      if (res.ok) planStore.set({ date: today, plan: res.plan, source: res.source, note: res.note })
       else setError(res.error)
     })
   }
@@ -70,7 +70,7 @@ export function Planner({ today, focusSkill, songs, chordsById }: Props) {
             ))}
           </div>
           <button type="button" onClick={makePlan} disabled={pending} className="btn-primary">
-            {pending ? "Planning..." : "Plan my session"}
+            {pending ? "Asking your coach..." : "Plan my session"}
           </button>
           {error && (
             <p role="alert" className="text-sm text-danger">
@@ -82,6 +82,8 @@ export function Planner({ today, focusSkill, songs, chordsById }: Props) {
         <PlanRunner
           key={JSON.stringify(plan)}
           plan={plan}
+          source={saved?.source}
+          note={saved?.note}
           songs={songs}
           chordsById={chordsById}
           onLog={() => setLogging(true)}
@@ -121,12 +123,16 @@ type RunState =
 
 function PlanRunner({
   plan,
+  source,
+  note,
   songs,
   chordsById,
   onLog,
   onClear,
 }: {
   plan: Plan
+  source?: "ai" | "template"
+  note?: string
   songs: LogSong[]
   chordsById: Record<string, string | null>
   onLog: () => void
@@ -206,6 +212,11 @@ function PlanRunner({
         <div>
           <h2 className="text-xl font-semibold">Today&apos;s plan</h2>
           <p className="text-sm text-muted">{plan.why}</p>
+          {source && (
+            <p className="mt-1 text-xs text-muted">
+              {source === "ai" ? "Planned by your AI coach" : (note ?? "Built-in plan")}
+            </p>
+          )}
         </div>
         <span className="shrink-0 rounded-full bg-surface-2 px-3 py-1 text-sm tabular-nums">
           {planTotal(plan)} min
