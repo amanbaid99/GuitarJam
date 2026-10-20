@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { Suspense } from "react"
 import { requireUser } from "@/lib/auth"
 import { todayISO } from "@/lib/dates"
@@ -9,7 +10,12 @@ export const metadata = { title: "Songs" }
 export default function RepertoirePage() {
   return (
     <main className="flex flex-col gap-4">
-      <h1 className="text-3xl font-bold tracking-tight">Songs</h1>
+      <header className="flex items-center justify-between gap-3">
+        <h1 className="text-3xl font-bold tracking-tight">Songs</h1>
+        <Link href="/repertoire/add" className="btn-primary min-h-11 px-4 text-base">
+          + Add song
+        </Link>
+      </header>
       <Suspense fallback={<ListSkeleton />}>
         <Repertoire />
       </Suspense>

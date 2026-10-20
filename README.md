@@ -17,7 +17,8 @@ Stack: Next.js 16 (App Router, Cache Components) + TypeScript + Tailwind 4, Supa
 - [x] Step 5: Today screen (week summary, timed session plan, metronome, one-tap session log)
 - [x] Step 6: AI practice coach via OpenRouter (free NVIDIA Nemotron), validated, falls back to the built-in plan
 - [x] Step 7: Sets (AI set builder with built-in fallback, drag to reorder, Go-to set, play in performance mode)
-- [ ] Steps 8 to 10: see HANDOFF.md
+- [x] Step 8: Add song (manual, or screenshot import via Nemotron vision; lyrics guard; family suggested by the theory engine; review before saving)
+- [ ] Steps 9 and 10: see HANDOFF.md
 
 ## Run locally
 

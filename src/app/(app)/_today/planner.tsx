@@ -213,9 +213,16 @@ function PlanRunner({
           <h2 className="text-xl font-semibold">Today&apos;s plan</h2>
           <p className="text-sm text-muted">{plan.why}</p>
           {source && (
-            <p className="mt-1 text-xs text-muted">
-              {source === "ai" ? "Planned by your AI coach" : (note ?? "Built-in plan")}
-            </p>
+            <div className="mt-2 flex flex-col items-start gap-1">
+              <span
+                className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                  source === "ai" ? "bg-accent/15 text-accent" : "bg-surface-2 text-muted"
+                }`}
+              >
+                {source === "ai" ? "✦ AI coach" : "Built-in plan"}
+              </span>
+              {source === "template" && note && <span className="text-xs text-muted">{note}</span>}
+            </div>
           )}
         </div>
         <span className="shrink-0 rounded-full bg-surface-2 px-3 py-1 text-sm tabular-nums">

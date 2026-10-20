@@ -23,6 +23,7 @@ export type ChatJsonOptions<T> = {
   model?: string
   timeoutMs?: number
   temperature?: number
+  maxTokens?: number
   /** For tests. */
   fetchImpl?: typeof fetch
 }
@@ -60,7 +61,7 @@ export async function chatJson<T>(opts: ChatJsonOptions<T>): Promise<ChatJsonRes
         body: JSON.stringify({
           model,
           temperature: opts.temperature ?? 0.4,
-          max_tokens: 2000,
+          max_tokens: opts.maxTokens ?? 2000,
           reasoning: { exclude: true },
           messages: [
             { role: "system", content: opts.system },
