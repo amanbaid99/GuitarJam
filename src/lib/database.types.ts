@@ -232,7 +232,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      log_session: {
+        Args: {
+          p_minutes: number
+          p_date?: string | null
+          p_focus?: string | null
+          p_how_it_went?: string | null
+          p_notes?: string | null
+          p_song_ids?: string[]
+        }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

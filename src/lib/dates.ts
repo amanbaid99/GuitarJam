@@ -24,3 +24,10 @@ export function mondayOf(dateISO: string): string {
 export function startOfWeekISO(now = new Date(), timeZone = APP_TIME_ZONE): string {
   return mondayOf(todayISO(now, timeZone))
 }
+
+/** `dateISO` plus `days` (can be negative), as YYYY-MM-DD. */
+export function addDays(dateISO: string, days: number): string {
+  const d = new Date(`${dateISO}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
+}

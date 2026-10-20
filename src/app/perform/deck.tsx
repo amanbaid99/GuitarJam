@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { useCallback, useEffect, useRef, useState } from "react"
+import { useWakeLock } from "@/lib/use-wake-lock"
 
 export type DeckSong = {
   id: string
@@ -15,52 +16,6 @@ export type DeckSong = {
 /** Each sentence on its own line, so "Verse: ..." and "Chorus: ..." start fresh. */
 function forStage(chart: string): string {
   return chart.replace(/\.\s+(?=\S)/g, ".\n")
-}
-
-type WakeState = "on" | "off" | "unsupported"
-
-/** Keeps the screen awake while mounted, re-acquiring after the tab comes back. */
-function useWakeLock(): WakeState {
-  const [state, setState] = useState<WakeState>("off")
-
-  useEffect(() => {
-    if (!("wakeLock" in navigator)) {
-      queueMicrotask(() => setState("unsupported"))
-      return
-    }
-    let lock: WakeLockSentinel | null = null
-    let cancelled = false
-
-    async function acquire() {
-      if (document.visibilityState !== "visible") return
-      try {
-        lock = await navigator.wakeLock.request("screen")
-        if (cancelled) {
-          await lock.release()
-          return
-        }
-        setState("on")
-        lock.addEventListener("release", () => setState("off"))
-      } catch {
-        setState("off")
-      }
-    }
-
-    // The browser drops the lock when the page is hidden; take it again on return.
-    const onVisible = () => {
-      if (document.visibilityState === "visible") acquire()
-    }
-
-    acquire()
-    document.addEventListener("visibilitychange", onVisible)
-    return () => {
-      cancelled = true
-      document.removeEventListener("visibilitychange", onVisible)
-      lock?.release().catch(() => {})
-    }
-  }, [])
-
-  return state
 }
 
 export function Deck({ title, songs, backHref }: { title: string; songs: DeckSong[]; backHref: string }) {

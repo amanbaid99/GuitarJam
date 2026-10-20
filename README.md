@@ -14,7 +14,8 @@ Stack: Next.js 16 (App Router, Cache Components) + TypeScript + Tailwind 4, Supa
 - [x] Step 3: theory engine (`src/lib/theory`, tested), transpose and capo on song cards
 - [x] Theme: black / white / beige background and 6 accent colours (Settings, saved per device)
 - [x] Step 4: performance mode (family medleys and sets, swipe, keeps screen awake)
-- [ ] Steps 5 to 10: see HANDOFF.md
+- [x] Step 5: Today screen (week summary, timed session plan, metronome, one-tap session log)
+- [ ] Steps 6 to 10: see HANDOFF.md
 
 ## Run locally
 
