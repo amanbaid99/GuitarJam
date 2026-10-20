@@ -36,12 +36,27 @@ export function SetEditor({ draft, songs, sourceNote, onSaved, onCancel }: Props
   const [notes, setNotes] = useState(draft.notes)
   const [ids, setIds] = useState(draft.song_ids)
   const [query, setQuery] = useState("")
+  // A brand-new empty set opens with the song list showing, so you can tap to add.
+  const [browse, setBrowse] = useState(draft.song_ids.length === 0)
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
   const [dragging, setDragging] = useState<number | null>(null)
   const rows = useRef<(HTMLLIElement | null)[]>([])
 
   const byId = useMemo(() => new Map(songs.map((s) => [s.id, s])), [songs])
+  const known = useMemo(
+    () =>
+      songs
+        .filter((s) => (s.status === "can_play" || s.status === "polished") && !ids.includes(s.id))
+        // Family songs first (grouped by family), songs without a family last.
+        .sort(
+          (a, b) =>
+            Number(!a.family_name) - Number(!b.family_name) ||
+            (a.family_name ?? "").localeCompare(b.family_name ?? "") ||
+            a.title.localeCompare(b.title),
+        ),
+    [songs, ids],
+  )
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return []
@@ -97,12 +112,20 @@ export function SetEditor({ draft, songs, sourceNote, onSaved, onCancel }: Props
     <div className="flex flex-col gap-4">
       {!draft.id && (
         <p className="rounded-2xl bg-accent/15 px-4 py-3 text-sm font-medium text-accent" role="status">
-          Not saved yet. Check the order, then tap Save set.
+          {draft.song_ids.length === 0
+            ? "Your own set: name it, tap songs to add them, then Save set."
+            : "Not saved yet. Check the order, then tap Save set."}
         </p>
       )}
       <label className="flex flex-col gap-1.5">
         <span className="text-sm text-muted">Set name</span>
-        <input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} className="field" />
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={60}
+          placeholder="e.g. Sunday chai jam"
+          className="field"
+        />
       </label>
 
       {sourceNote && <p className="text-xs text-muted">{sourceNote}</p>}
@@ -200,6 +223,40 @@ export function SetEditor({ draft, songs, sourceNote, onSaved, onCancel }: Props
                 >
                   + {s.title}
                   {s.family_name ? <span className="text-muted"> · {s.family_name}</span> : null}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={() => setBrowse((b) => !b)}
+          aria-expanded={browse}
+          className="btn-ghost min-h-11 justify-between text-sm"
+        >
+          <span>Browse songs I know</span>
+          <span className="text-muted">{browse ? "Hide" : `${known.length} more`}</span>
+        </button>
+        {browse && (
+          <ul className="flex max-h-96 flex-col gap-1 overflow-y-auto rounded-2xl bg-bg p-1">
+            {known.length === 0 && <li className="p-3 text-sm text-muted">Every song you know is in this set.</li>}
+            {known.map((s) => (
+              <li key={s.id}>
+                <button
+                  type="button"
+                  onClick={() => setIds((list) => [...list, s.id])}
+                  className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left hover:bg-surface-2"
+                >
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent/15 font-bold text-accent">
+                    +
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">{s.title}</span>
+                    <span className="block truncate text-xs text-muted">{s.family_name ?? "No family"}</span>
+                  </span>
                 </button>
               </li>
             ))}

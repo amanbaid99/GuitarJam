@@ -11,7 +11,7 @@ import {
   type SetSong,
 } from "./template"
 
-export type BuildResult = { proposal: SetProposal; source: "ai" | "template"; note?: string }
+export type BuildResult = { proposal: SetProposal; source: "ai" | "template"; note?: string; model?: string }
 
 const SYSTEM = `You build short live sets for one guitarist, Aman, who plays for friends.
 He strums and sings; repertoire is Bollywood, old Hindi songs, classic rock, John Mayer, Coldplay.
@@ -111,7 +111,7 @@ export async function buildSetProposal(
   })
   if (result.ok) {
     const proposal = cleanSetProposal(result.data, songs, req)
-    if (proposal) return { proposal, source: "ai" }
+    if (proposal) return { proposal, source: "ai", model: result.model }
   }
   return {
     proposal: templateSet(songs, req),

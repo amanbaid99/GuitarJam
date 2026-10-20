@@ -90,3 +90,12 @@ body {
     @apply rounded-3xl border border-border bg-surface p-5;
   }
 }
+
+/* Indeterminate progress bar (set building). */
+@keyframes slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-\[slide_1\.4s_ease-in-out_infinite\] { animation: none; width: 100%; opacity: 0.4; }
+}

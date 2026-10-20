@@ -5,11 +5,11 @@ import { z } from "zod"
 import { requireUser } from "@/lib/auth"
 import { buildSetProposal } from "@/lib/sets/builder"
 import { loadSetSongs } from "@/lib/sets/load"
-import { LANGUAGE_MIXES, SET_MINUTES, goToSet, type SetProposal } from "@/lib/sets/template"
+import { LANGUAGE_MIXES, SET_MINUTES, goToSet, templateSet, type SetProposal } from "@/lib/sets/template"
 import { createClient } from "@/lib/supabase/server"
 
 export type BuildResult =
-  | { ok: true; proposal: SetProposal; source: "ai" | "template"; note?: string }
+  | { ok: true; proposal: SetProposal; source: "ai" | "template"; note?: string; model?: string }
   | { ok: false; error: string }
 
 const buildSchema = z.object({
@@ -18,8 +18,13 @@ const buildSchema = z.object({
   minutes: z.union(SET_MINUTES.map((m) => z.literal(m))),
 })
 
-/** Proposes a set (not saved yet). AI first, built-in builder as fallback. */
-export async function buildSet(input: z.input<typeof buildSchema>): Promise<BuildResult> {
+/**
+ * Proposes a set (not saved yet).
+ * useAi: ask the AI, and if it fails return the built-in set with the reason
+ * (source "template", note set) so the screen can offer Retry or Use built-in.
+ * !useAi: the built-in builder straight away.
+ */
+export async function buildSet(input: z.input<typeof buildSchema>, useAi = true): Promise<BuildResult> {
   await requireUser()
   const parsed = buildSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: "Check the room, language and minutes." }
@@ -28,8 +33,9 @@ export async function buildSet(input: z.input<typeof buildSchema>): Promise<Buil
     if (songs.filter((s) => s.status === "can_play" || s.status === "polished").length === 0) {
       return { ok: false, error: "Mark some songs as Can play first." }
     }
-    const { proposal, source, note } = await buildSetProposal(songs, parsed.data)
-    return { ok: true, proposal, source, note }
+    if (!useAi) return { ok: true, proposal: templateSet(songs, parsed.data), source: "template" }
+    const { proposal, source, note, model } = await buildSetProposal(songs, parsed.data)
+    return { ok: true, proposal, source, note, model }
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Could not build a set." }
   }

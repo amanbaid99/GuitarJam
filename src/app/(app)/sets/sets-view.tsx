@@ -1,9 +1,10 @@
 "use client"
 
 import Link from "next/link"
-import { useState, useTransition } from "react"
-import { LANGUAGE_MIXES, MINUTES_PER_SONG, SET_MINUTES, type LanguageMix } from "@/lib/sets/template"
+import { useRef, useState, useTransition } from "react"
+import { LANGUAGE_MIXES, MINUTES_PER_SONG, SET_MINUTES, type LanguageMix, type SetProposal } from "@/lib/sets/template"
 import { buildSet, createGoToSet, deleteSet } from "./actions"
+import { AI_DISCLAIMER, BuildFailed, BuildProgress } from "./build-progress"
 import { SetEditor, type EditorDraft, type EditorSong } from "./set-editor"
 
 export type SavedSet = {
@@ -22,6 +23,11 @@ const MIX_LABEL: Record<LanguageMix, string> = {
 
 type Editing = { draft: EditorDraft; sourceNote?: string } | null
 
+type Flow =
+  | { kind: "idle" }
+  | { kind: "building"; startedAt: number }
+  | { kind: "failed"; reason: string; fallback?: SetProposal }
+
 export function SetsView({ sets, songs }: { sets: SavedSet[]; songs: EditorSong[] }) {
   const [room, setRoom] = useState("")
   const [mix, setMix] = useState<LanguageMix>("mixed")
@@ -30,24 +36,55 @@ export function SetsView({ sets, songs }: { sets: SavedSet[]; songs: EditorSong[
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
   const [justSaved, setJustSaved] = useState<string | null>(null)
+  const [flow, setFlow] = useState<Flow>({ kind: "idle" })
+  // Each build gets an id; a cancelled or replaced build is ignored when it returns.
+  const runId = useRef(0)
 
   const title = new Map(songs.map((s) => [s.id, s.title]))
   const hasGoTo = sets.some((s) => s.name === "Go-to set")
 
-  function build() {
+  function openProposal(proposal: SetProposal, sourceNote?: string) {
+    setFlow({ kind: "idle" })
+    setEditing({
+      draft: { name: proposal.name, room, notes: proposal.notes, song_ids: proposal.song_ids },
+      sourceNote,
+    })
+  }
+
+  async function build(useAi: boolean) {
+    const id = ++runId.current
     setError(null)
     setJustSaved(null)
-    startTransition(async () => {
-      const res = await buildSet({ room, mix, minutes })
-      if (!res.ok) {
-        setError(res.error)
-        return
-      }
-      setEditing({
-        draft: { name: res.proposal.name, room, notes: res.proposal.notes, song_ids: res.proposal.song_ids },
-        sourceNote: res.source === "ai" ? "Built by your AI coach. Reorder or swap anything." : res.note,
-      })
-    })
+    setFlow({ kind: "building", startedAt: Date.now() })
+    const res = await buildSet({ room, mix, minutes }, useAi)
+    if (id !== runId.current) return // cancelled or replaced
+
+    if (!res.ok) {
+      setFlow({ kind: "failed", reason: res.error })
+      return
+    }
+    if (useAi && res.source === "template") {
+      // The AI failed; the server already made a built-in set we can offer.
+      setFlow({ kind: "failed", reason: res.note ?? "The AI did not answer.", fallback: res.proposal })
+      return
+    }
+    openProposal(
+      res.proposal,
+      res.source === "ai"
+        ? `${AI_DISCLAIMER}${res.model ? ` (Model: ${res.model.replace(/:free$/, "")})` : ""}`
+        : "Built without AI: easy sing-along opener, same-family songs together, sing-along to close.",
+    )
+  }
+
+  function cancelBuild() {
+    runId.current++
+    setFlow({ kind: "idle" })
+  }
+
+  function startManual() {
+    setError(null)
+    setJustSaved(null)
+    setEditing({ draft: { name: "", room: "", notes: "", song_ids: [] } })
   }
 
   function addGoTo() {
@@ -65,6 +102,27 @@ export function SetsView({ sets, songs }: { sets: SavedSet[]; songs: EditorSong[
       const res = await deleteSet(id)
       if (!res.ok) setError(res.error ?? "Could not delete.")
     })
+  }
+
+  if (flow.kind === "building") {
+    return <BuildProgress startedAt={flow.startedAt} onCancel={cancelBuild} onWithoutAi={() => build(false)} />
+  }
+
+  if (flow.kind === "failed") {
+    const fallback = flow.fallback
+    return (
+      <BuildFailed
+        reason={flow.reason}
+        hasFallback={Boolean(fallback)}
+        onRetry={() => build(true)}
+        onUseBuiltIn={() =>
+          fallback
+            ? openProposal(fallback, "Built without AI: easy sing-along opener, same-family songs together, sing-along to close.")
+            : build(false)
+        }
+        onCancel={() => setFlow({ kind: "idle" })}
+      />
+    )
   }
 
   if (editing) {
@@ -131,8 +189,11 @@ export function SetsView({ sets, songs }: { sets: SavedSet[]; songs: EditorSong[
             </button>
           ))}
         </div>
-        <button type="button" onClick={build} disabled={pending} className="btn-primary">
-          {pending ? "Building..." : "Build my set"}
+        <button type="button" onClick={() => build(true)} className="btn-primary">
+          Build my set with AI
+        </button>
+        <button type="button" onClick={() => build(false)} className="min-h-11 text-sm text-muted">
+          Or build it instantly without AI
         </button>
         {error && (
           <p role="alert" className="text-sm text-danger">
@@ -140,6 +201,10 @@ export function SetsView({ sets, songs }: { sets: SavedSet[]; songs: EditorSong[
           </p>
         )}
       </section>
+
+      <button type="button" onClick={startManual} className="btn-ghost">
+        + Make my own set
+      </button>
 
       <section className="flex flex-col gap-3" aria-label="Saved sets">
         <h2 className="text-lg font-semibold">Saved sets</h2>
