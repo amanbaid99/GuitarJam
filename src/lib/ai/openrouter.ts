@@ -6,8 +6,23 @@ import type { z } from "zod"
  * Defaults to NVIDIA's free Nemotron models; override with env vars.
  */
 const ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
-export const TEXT_MODEL = process.env.OPENROUTER_MODEL || "nvidia/nemotron-3-super-120b-a12b:free"
-export const VISION_MODEL = process.env.OPENROUTER_VISION_MODEL || "nvidia/nemotron-3.5-super-vl:free"
+// Free models change often, so each job has a chain: OpenRouter tries them in order
+// and moves on if one is down. Override with a comma-separated list in env.
+const DEFAULT_CHAIN = [
+  "nvidia/nemotron-3.5-super-vl:free",
+  "google/gemma-4-31b-it:free",
+  "minimax/minimax-m3.1-flash:free",
+]
+const chain = (env: string | undefined) => {
+  const list = (env ?? "").split(",").map((m) => m.trim()).filter(Boolean)
+  return list.length ? list : DEFAULT_CHAIN
+}
+/** Models for text jobs (coach, set builder), in order of preference. */
+export const TEXT_MODELS = chain(process.env.OPENROUTER_MODEL)
+/** Models that can read images (screenshot import), in order of preference. */
+export const VISION_MODELS = chain(process.env.OPENROUTER_VISION_MODEL)
+export const TEXT_MODEL = TEXT_MODELS[0]
+export const VISION_MODEL = VISION_MODELS[0]
 
 export const aiConfigured = () => Boolean(process.env.OPENROUTER_API_KEY)
 
@@ -20,7 +35,8 @@ export type ChatJsonOptions<T> = {
   schema: z.ZodType<T>
   /** Strict JSON schema sent to the model (every field required, no extras). */
   jsonSchema: { name: string; schema: Record<string, unknown> }
-  model?: string
+  /** First choice plus fallbacks. Defaults to TEXT_MODELS. */
+  models?: string[]
   timeoutMs?: number
   temperature?: number
   maxTokens?: number
@@ -80,7 +96,8 @@ export function extractJson(text: string): unknown {
 }
 
 export async function chatJson<T>(opts: ChatJsonOptions<T>): Promise<ChatJsonResult<T>> {
-  const model = opts.model ?? TEXT_MODEL
+  const models = opts.models?.length ? opts.models : TEXT_MODELS
+  let model = models[0]
   const key = process.env.OPENROUTER_API_KEY
   if (!key) return fail("no_key", "OPENROUTER_API_KEY is not set")
   const doFetch = opts.fetchImpl ?? fetch
@@ -100,6 +117,8 @@ export async function chatJson<T>(opts: ChatJsonOptions<T>): Promise<ChatJsonRes
         },
         body: JSON.stringify({
           model,
+          // OpenRouter falls back through these if the first one fails.
+          ...(models.length > 1 ? { models } : {}),
           temperature: opts.temperature ?? 0.4,
           // Reasoning tokens count toward max_tokens, so leave plenty of room for the answer.
           max_tokens: opts.maxTokens ?? 8000,
@@ -133,9 +152,11 @@ export async function chatJson<T>(opts: ChatJsonOptions<T>): Promise<ChatJsonRes
       return fail(classifyFailure(res.status, detail), `OpenRouter ${res.status}: ${detail.slice(0, 300)}`)
     }
     const body = (await res.json()) as {
+      model?: string
       error?: { code?: number; message?: string }
       choices?: { finish_reason?: string; message?: { content?: string | { type: string; text?: string }[] | null } }[]
     }
+    if (body.model) model = body.model // the model that actually answered
     // OpenRouter can return 200 with an error object from the upstream provider.
     if (body.error) {
       return fail(classifyFailure(body.error.code ?? 502, body.error.message ?? ""), `Upstream: ${body.error.message ?? "error"}`)

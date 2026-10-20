@@ -85,9 +85,10 @@ Import the GitHub repo in Vercel, then add these environment variables:
 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `ALLOWED_EMAIL`,
 `APP_TIME_ZONE`, `OPENROUTER_API_KEY`. Do not add the service role key.
 
-AI runs through OpenRouter, server side only. Defaults: `nvidia/nemotron-3-super-120b-a12b:free`
-for text, `nvidia/nemotron-3.5-super-vl:free` for images. Override with `OPENROUTER_MODEL` /
-`OPENROUTER_VISION_MODEL`. If the AI is unavailable the app uses its built-in plan.
+AI runs through OpenRouter, server side only, on a chain of free models tried in order:
+`nvidia/nemotron-3.5-super-vl:free`, `google/gemma-4-31b-it:free`, `minimax/minimax-m3.1-flash:free`.
+Override with comma-separated `OPENROUTER_MODEL` / `OPENROUTER_VISION_MODEL`. If every model
+fails, the app uses its built-in plan or set builder. Settings > Test AI connection shows what happened.
 
 ## Rules
 

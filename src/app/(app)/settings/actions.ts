@@ -1,7 +1,7 @@
 "use server"
 
 import { z } from "zod"
-import { AI_FAILURE_MESSAGE, TEXT_MODEL, VISION_MODEL, chatJson } from "@/lib/ai/openrouter"
+import { AI_FAILURE_MESSAGE, TEXT_MODELS, VISION_MODELS, chatJson } from "@/lib/ai/openrouter"
 import { requireUser } from "@/lib/auth"
 
 export type AiTestResult =
@@ -11,10 +11,10 @@ export type AiTestResult =
 /** Sends one tiny request to OpenRouter and reports exactly what happened. */
 export async function testAi(kind: "text" | "vision" = "text"): Promise<AiTestResult> {
   await requireUser()
-  const model = kind === "vision" ? VISION_MODEL : TEXT_MODEL
+  const models = kind === "vision" ? VISION_MODELS : TEXT_MODELS
   const started = Date.now()
   const res = await chatJson({
-    model,
+    models,
     system: 'You are a health check. Reply with JSON only: {"ok": true}.',
     user: "Health check.",
     schema: z.object({ ok: z.boolean() }),
@@ -29,7 +29,7 @@ export async function testAi(kind: "text" | "vision" = "text"): Promise<AiTestRe
     },
     maxTokens: 2000,
   })
-  if (res.ok) return { ok: true, model, ms: Date.now() - started }
+  if (res.ok) return { ok: true, model: res.model, ms: Date.now() - started }
   // The detail never includes the key; it is OpenRouter's own error text.
-  return { ok: false, message: AI_FAILURE_MESSAGE[res.reason], detail: res.error.slice(0, 300), model }
+  return { ok: false, message: AI_FAILURE_MESSAGE[res.reason], detail: res.error.slice(0, 300), model: models.join(", ") }
 }

@@ -1,6 +1,6 @@
 import "server-only"
 import { z } from "zod"
-import { AI_FAILURE_MESSAGE, VISION_MODEL, chatJson, type ChatJsonOptions } from "@/lib/ai/openrouter"
+import { AI_FAILURE_MESSAGE, VISION_MODELS, chatJson, type ChatJsonOptions } from "@/lib/ai/openrouter"
 import { cleanImported, type ImportedSong } from "./clean"
 
 const SYSTEM = `You read photos and screenshots of guitar chord charts for one guitarist.
@@ -61,7 +61,7 @@ export async function extractSongs(
   fetchImpl?: ChatJsonOptions<unknown>["fetchImpl"],
 ): Promise<ExtractResult> {
   const result = await chatJson({
-    model: VISION_MODEL,
+    models: VISION_MODELS,
     system: SYSTEM,
     user: [
       { type: "text", text: "Read every song in this image." },

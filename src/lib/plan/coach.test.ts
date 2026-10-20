@@ -172,3 +172,31 @@ describe("failure reasons", () => {
     expect(body.max_tokens).toBeGreaterThanOrEqual(8000)
   })
 })
+
+describe("model chain", () => {
+  beforeEach(() => {
+    process.env.OPENROUTER_API_KEY = "test-key"
+  })
+
+  it("sends a chain of free models so OpenRouter can fall back", async () => {
+    const fetchImpl = reply(JSON.stringify(goodPlan))
+    await coachPlan(input, fetchImpl)
+    const body = JSON.parse(String((fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1].body))
+    expect(body.models.length).toBeGreaterThanOrEqual(2)
+    expect(body.models.every((m: string) => m.endsWith(":free"))).toBe(true)
+    expect(body.model).toBe(body.models[0])
+  })
+
+  it("treats NVIDIA's 'function not found' as the model being unavailable", async () => {
+    const nvidia404 = JSON.stringify({
+      error: {
+        message: "Provider returned error",
+        code: 404,
+        metadata: { raw: '{"status":404,"title":"Not Found","detail":"Function abc: Not found for account xyz"}', provider_name: "Nvidia" },
+      },
+    })
+    const res = await coachPlan(input, vi.fn(async () => new Response(nvidia404, { status: 404 })))
+    expect(res.source).toBe("template")
+    expect(res.note).toMatch(/unavailable/)
+  })
+})
