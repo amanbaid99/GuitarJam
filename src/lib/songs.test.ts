@@ -5,6 +5,7 @@ import {
   groupByFamily,
   lastPractisedLabel,
   matchesFilters,
+  sortSongs,
   type Family,
   type Song,
 } from "./songs"
@@ -89,5 +90,48 @@ describe("groupByFamily", () => {
     expect(groups.map((g) => g.family?.name ?? "Unassigned")).toEqual(["Em-D-C", "Am-G-F", "Unassigned"])
     expect(groups[0].songs.map((s) => s.title)).toEqual(["Enna Sona", "Woh Lamhe"])
     expect(groups[2].songs.map((s) => s.title)).toEqual(["Orphan", "Roobaroo"])
+  })
+})
+
+describe("sortSongs", () => {
+  const fams = [family("g", "G-Em-C-D")]
+  const songs = [
+    song({ title: "Yellow", family_id: "g", key_capo: "Capo 4", chords: "G, D, C", difficulty: "easy", last_practised: "2026-10-18" }),
+    song({ title: "Perfect", family_id: "g", chords: "G, Em, C, D", difficulty: "easy", last_practised: "2026-09-01" }),
+    song({ title: "Roobaroo", chords: "A, D, E", difficulty: "medium" }),
+    song({ title: "Labon Ko", chords: "Am, G, F, G", difficulty: null, my_transpose: 2 }),
+    song({ title: "Stay", chords: null }),
+  ]
+
+  it("sorts A to Z", () => {
+    expect(sortSongs(songs, fams, "az")[0].songs.map((s) => s.title)).toEqual([
+      "Labon Ko", "Perfect", "Roobaroo", "Stay", "Yellow",
+    ])
+  })
+
+  it("puts never-played songs first, then the oldest", () => {
+    expect(sortSongs(songs, fams, "recent")[0].songs.map((s) => s.title)).toEqual([
+      "Labon Ko", "Roobaroo", "Stay", "Perfect", "Yellow",
+    ])
+  })
+
+  it("groups by the key you actually play it in", () => {
+    const groups = sortSongs(songs, fams, "key").map((g) => [g.label, g.songs.map((s) => s.title)])
+    expect(groups).toEqual([
+      ["Key of D", ["Labon Ko"]], // Am-G-F guessed as C, moved up 2 by your version
+      ["Key of G", ["Perfect"]],
+      ["Key of A", ["Roobaroo"]],
+      ["Key of B", ["Yellow"]], // G shapes with capo 4
+      ["Key unknown", ["Stay"]],
+    ])
+  })
+
+  it("groups by difficulty, easy first", () => {
+    expect(sortSongs(songs, fams, "difficulty").map((g) => g.label)).toEqual(["Easy", "Medium", "Not set"])
+  })
+
+  it("filters songs you know", () => {
+    expect(matchesFilters(song({ status: "polished" }), { ...NO_FILTERS, status: "known" })).toBe(true)
+    expect(matchesFilters(song({ status: "learning" }), { ...NO_FILTERS, status: "known" })).toBe(false)
   })
 })

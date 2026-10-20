@@ -3,24 +3,38 @@
 import Link from "next/link"
 import { useMemo, useState } from "react"
 import { DIFFICULTIES, SONG_STATUSES, STYLES } from "@/lib/domain"
+import { createLocalStore } from "@/lib/local-store"
 import {
   DIFFICULTY_LABEL,
   NO_FILTERS,
+  SORT_LABEL,
+  SORT_MODES,
   STATUS_LABEL,
   STYLE_LABEL,
   groupByFamily,
   matchesFilters,
+  sortSongs,
   type Family,
   type Song,
   type SongFilters,
+  type SortMode,
 } from "@/lib/songs"
 import { SongCard } from "./song-card"
 
 type Props = { families: Family[]; songs: Song[]; today: string }
 
+// Your last sort, remembered on this device.
+const sortStore = createLocalStore<SortMode>(
+  "myjamm-song-sort",
+  (raw) => (SORT_MODES.includes(raw as SortMode) ? (raw as SortMode) : null),
+  "family",
+)
+
 export function RepertoireView({ families, songs, today }: Props) {
   const [filters, setFilters] = useState<SongFilters>(NO_FILTERS)
   const [open, setOpen] = useState<Record<string, boolean>>({})
+  const [moreFilters, setMoreFilters] = useState(false)
+  const sort = sortStore.useValue()
 
   const filtering =
     filters.status !== "all" ||
@@ -32,6 +46,10 @@ export function RepertoireView({ families, songs, today }: Props) {
   const groups = useMemo(
     () => groupByFamily(families, visible).filter((g) => g.songs.length > 0 || (!filtering && g.family)),
     [families, visible, filtering],
+  )
+  const sortedGroups = useMemo(
+    () => (sort === "family" ? [] : sortSongs(visible, families, sort)),
+    [sort, visible, families],
   )
 
   // Songs per family that appear in Performance mode (everything but "want to learn").
@@ -48,7 +66,7 @@ export function RepertoireView({ families, songs, today }: Props) {
   if (songs.length === 0) {
     return (
       <p className="card text-muted">
-        No songs yet. Go to Today and tap Load my repertoire.
+        No songs yet. Tap Add song to type one in or import a screenshot.
       </p>
     )
   }
@@ -70,36 +88,80 @@ export function RepertoireView({ families, songs, today }: Props) {
         <ChipRow
           label="Status"
           value={filters.status}
-          options={SONG_STATUSES.map((s) => [s, STATUS_LABEL[s]])}
+          options={[["known", "Songs I know"], ...SONG_STATUSES.map((s) => [s, STATUS_LABEL[s]] as [typeof s, string])]}
           onChange={(v) => set("status", v)}
         />
-        <ChipRow
-          label="Difficulty"
-          value={filters.difficulty}
-          options={DIFFICULTIES.map((d) => [d, DIFFICULTY_LABEL[d]])}
-          onChange={(v) => set("difficulty", v)}
-        />
-        <ChipRow
-          label="Style"
-          value={filters.style}
-          options={STYLES.map((s) => [s, STYLE_LABEL[s]])}
-          onChange={(v) => set("style", v)}
-        />
+        <div role="group" aria-label="Sort" className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1">
+          <span className="shrink-0 text-sm text-muted">Sort</span>
+          {SORT_MODES.map((m) => (
+            <button
+              key={m}
+              type="button"
+              aria-pressed={m === sort}
+              onClick={() => sortStore.set(m)}
+              className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-medium ${
+                m === sort ? "border-fg bg-fg text-bg" : "border-border"
+              }`}
+            >
+              {SORT_LABEL[m]}
+            </button>
+          ))}
+        </div>
+        {moreFilters && (
+          <>
+            <ChipRow
+              label="Difficulty"
+              value={filters.difficulty}
+              options={DIFFICULTIES.map((d) => [d, DIFFICULTY_LABEL[d]])}
+              onChange={(v) => set("difficulty", v)}
+            />
+            <ChipRow
+              label="Style"
+              value={filters.style}
+              options={STYLES.map((s) => [s, STYLE_LABEL[s]])}
+              onChange={(v) => set("style", v)}
+            />
+          </>
+        )}
         <div className="flex items-center justify-between text-sm text-muted">
           <span>
             {filtering ? `${visible.length} of ${songs.length} songs` : `${songs.length} songs`}
           </span>
-          {filtering && (
-            <button type="button" onClick={() => setFilters(NO_FILTERS)} className="min-h-11 px-2 text-accent">
-              Clear filters
+          <span className="flex items-center">
+            <button type="button" onClick={() => setMoreFilters((m) => !m)} className="min-h-11 px-2 text-muted">
+              {moreFilters ? "Fewer filters" : "More filters"}
             </button>
-          )}
+            {filtering && (
+              <button type="button" onClick={() => setFilters(NO_FILTERS)} className="min-h-11 px-2 text-accent">
+                Clear
+              </button>
+            )}
+          </span>
         </div>
       </div>
 
-      {groups.length === 0 && <p className="card text-muted">No songs match these filters.</p>}
+      {visible.length === 0 && <p className="card text-muted">No songs match these filters.</p>}
 
-      {groups.map((group) => {
+      {sort !== "family" &&
+        sortedGroups.map((group, i) => (
+          <section key={group.label ?? i} className="flex flex-col gap-2">
+            {group.label && (
+              <h2 className="flex items-center justify-between px-1 pt-2 text-sm font-semibold text-muted">
+                <span>{group.label}</span>
+                <span className="tabular-nums">{group.songs.length}</span>
+              </h2>
+            )}
+            <ul className="flex flex-col gap-2">
+              {group.songs.map((song) => (
+                <li key={song.id}>
+                  <SongCard song={song} today={today} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+
+      {sort === "family" && groups.map((group) => {
         const key = group.family?.id ?? "unassigned"
         // While filtering, show every matching group open so results are visible.
         const isOpen = filtering || (open[key] ?? false)
