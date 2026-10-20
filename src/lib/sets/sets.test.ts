@@ -88,7 +88,7 @@ describe("cleanSetProposal", () => {
 
   it("drops unknown, repeated and not-yet-playable songs", () => {
     const raw = {
-      name: "Night — one",
+      name: "Night \u2014 one",
       notes: "Fun.",
       song_ids: [id("Stand by Me"), "nope", id("Stand by Me"), id("Yellow"), id("Yaaron"), id("Perfect")],
     }
