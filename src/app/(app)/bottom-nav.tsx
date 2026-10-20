@@ -10,8 +10,13 @@ const TABS = [
   { href: "/progress", label: "Progress", icon: "M4 20V10m6 10V4m6 16v-7m4 7H2" },
 ] as const
 
+/** Highlights the current tab. Reads the URL, so it sits inside <Suspense>. */
 export function BottomNav() {
-  const pathname = usePathname()
+  return <NavBar pathname={usePathname()} />
+}
+
+/** The bar itself. With no pathname (while loading) no tab is highlighted. */
+export function NavBar({ pathname }: { pathname: string | null }) {
   return (
     <nav
       aria-label="Main"
@@ -20,7 +25,7 @@ export function BottomNav() {
     >
       <ul className="mx-auto grid max-w-xl grid-cols-4">
         {TABS.map((tab) => {
-          const active = tab.href === "/" ? pathname === "/" : pathname.startsWith(tab.href)
+          const active = !!pathname && (tab.href === "/" ? pathname === "/" : pathname.startsWith(tab.href))
           return (
             <li key={tab.href}>
               <Link

@@ -1,4 +1,5 @@
-import { BottomNav } from "./bottom-nav"
+import { Suspense } from "react"
+import { BottomNav, NavBar } from "./bottom-nav"
 
 export default function AppLayout({ children }: LayoutProps<"/">) {
   return (
@@ -9,7 +10,9 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
       >
         {children}
       </div>
-      <BottomNav />
+      <Suspense fallback={<NavBar pathname={null} />}>
+        <BottomNav />
+      </Suspense>
     </>
   )
 }
