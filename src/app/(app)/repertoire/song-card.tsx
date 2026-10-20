@@ -12,6 +12,7 @@ import {
   type Song,
 } from "@/lib/songs"
 import { markVerified, setSongStatus, updateSong, type SongEdit } from "./actions"
+import { ChordTools } from "./chord-tools"
 
 type Props = { song: Song; families: Family[]; today: string }
 
@@ -120,9 +121,7 @@ export function SongCard({ song, families, today }: Props) {
           </dl>
 
           {song.chords ? (
-            <div className="rounded-2xl bg-bg p-4 font-mono text-base leading-relaxed whitespace-pre-wrap">
-              {song.chords}
-            </div>
+            <ChordTools chords={song.chords} keyCapo={song.key_capo} familyKey={family?.key ?? null} />
           ) : (
             <p className="text-sm text-muted">No chords yet.</p>
           )}
