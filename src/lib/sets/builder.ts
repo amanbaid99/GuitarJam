@@ -1,6 +1,6 @@
 import "server-only"
 import { z } from "zod"
-import { chatJson, noDashes, type ChatJsonOptions } from "@/lib/ai/openrouter"
+import { AI_FAILURE_MESSAGE, chatJson, noDashes, type ChatJsonOptions } from "@/lib/ai/openrouter"
 import {
   playable,
   songLanguage,
@@ -116,9 +116,6 @@ export async function buildSetProposal(
   return {
     proposal: templateSet(songs, req),
     source: "template",
-    note:
-      !result.ok && /not set/.test(result.error)
-        ? "AI is not set up yet, so this set uses the built-in builder."
-        : "The AI was busy, so this set uses the built-in builder.",
+    note: result.ok ? "The AI picked songs that are not in your library, so this uses the built-in builder." : AI_FAILURE_MESSAGE[result.reason],
   }
 }

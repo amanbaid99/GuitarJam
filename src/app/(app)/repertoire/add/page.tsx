@@ -6,6 +6,9 @@ import { AddSong } from "./add-song"
 
 export const metadata = { title: "Add song" }
 
+// Free AI models can be slow: give screenshot reading up to 2 minutes.
+export const maxDuration = 120
+
 export default function AddSongPage() {
   return (
     <main className="flex flex-col gap-5">

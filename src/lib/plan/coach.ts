@@ -1,6 +1,6 @@
 import "server-only"
 import { z } from "zod"
-import { chatJson, noDashes, type ChatJsonOptions } from "@/lib/ai/openrouter"
+import { AI_FAILURE_MESSAGE, chatJson, noDashes, type ChatJsonOptions } from "@/lib/ai/openrouter"
 import { daysBetween } from "@/lib/songs"
 import { templatePlan } from "./template"
 import { planSchema, type Plan, type PlanInput } from "./types"
@@ -135,11 +135,5 @@ export async function coachPlan(
     if (plan) return { plan, source: "ai" }
     return { plan: templatePlan(input), source: "template", note: "The coach's plan did not add up, so here is the built-in one." }
   }
-  return {
-    plan: templatePlan(input),
-    source: "template",
-    note: /not set/.test(result.error)
-      ? "AI coach is not set up yet, so here is the built-in plan."
-      : "The AI coach is busy right now, so here is the built-in plan.",
-  }
+  return { plan: templatePlan(input), source: "template", note: AI_FAILURE_MESSAGE[result.reason] }
 }

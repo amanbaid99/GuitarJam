@@ -1,6 +1,6 @@
 import "server-only"
 import { z } from "zod"
-import { VISION_MODEL, chatJson, type ChatJsonOptions } from "@/lib/ai/openrouter"
+import { AI_FAILURE_MESSAGE, VISION_MODEL, chatJson, type ChatJsonOptions } from "@/lib/ai/openrouter"
 import { cleanImported, type ImportedSong } from "./clean"
 
 const SYSTEM = `You read photos and screenshots of guitar chord charts for one guitarist.
@@ -70,17 +70,18 @@ export async function extractSongs(
     schema: importSchema,
     jsonSchema: { name: "chord_chart_import", schema: IMPORT_JSON_SCHEMA },
     temperature: 0.1,
-    maxTokens: 4000,
-    timeoutMs: 60_000,
+    maxTokens: 10000,
+    timeoutMs: 100_000,
     fetchImpl,
   })
 
   if (!result.ok) {
     return {
       ok: false,
-      error: /not set/.test(result.error)
-        ? "Screenshot import needs the OpenRouter key. You can still type the song in."
-        : "Could not read that image right now. Try again, crop closer, or type it in.",
+      error:
+        result.reason === "bad_reply" || result.reason === "empty"
+          ? "Could not read that image. Try a clearer or closer crop, or type it in."
+          : `${AI_FAILURE_MESSAGE[result.reason]} You can still type the song in.`,
     }
   }
   const songs = cleanImported(result.data.songs, families, existingTitles)

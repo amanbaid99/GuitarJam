@@ -6,6 +6,9 @@ import { SetsView } from "./sets-view"
 
 export const metadata = { title: "Sets" }
 
+// Free AI models can be slow: give set building up to 2 minutes.
+export const maxDuration = 120
+
 export default function SetsPage() {
   return (
     <main className="flex flex-col gap-5">

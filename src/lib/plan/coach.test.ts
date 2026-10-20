@@ -83,9 +83,9 @@ describe("coachPlan", () => {
   })
 
   it("falls back to the built-in plan when the AI is down", async () => {
-    const res = await coachPlan(input, reply("rate limited", 429))
+    const res = await coachPlan(input, reply("upstream down", 503))
     expect(res.source).toBe("template")
-    expect(res.note).toMatch(/busy/)
+    expect(res.note).toMatch(/unavailable/)
     expect(planTotal(res.plan)).toBe(20)
   })
 
@@ -94,7 +94,7 @@ describe("coachPlan", () => {
     const fetchImpl = vi.fn()
     const res = await coachPlan(input, fetchImpl)
     expect(res.source).toBe("template")
-    expect(res.note).toMatch(/not set up/)
+    expect(res.note).toMatch(/OPENROUTER_API_KEY is missing/)
     expect(fetchImpl).not.toHaveBeenCalled()
   })
 
@@ -132,5 +132,43 @@ describe("extractJson", () => {
   })
   it("throws when there is none", () => {
     expect(() => extractJson("nope")).toThrow()
+  })
+})
+
+describe("failure reasons", () => {
+  beforeEach(() => {
+    process.env.OPENROUTER_API_KEY = "test-key"
+  })
+  const status = (code: number, body: string) => vi.fn(async () => new Response(body, { status: code }))
+
+  it.each([
+    [401, '{"error":{"message":"No auth credentials found"}}', /rejected the API key/],
+    [404, '{"error":{"message":"No endpoints found matching your data policy"}}', /settings\/privacy/],
+    [429, '{"error":{"message":"Rate limit exceeded: free-models-per-day"}}', /limit reached/],
+    [402, '{"error":{"message":"Insufficient credits"}}', /credits/],
+  ])("explains HTTP %i clearly", async (code, body, message) => {
+    const res = await coachPlan(input, status(code, body))
+    expect(res.source).toBe("template")
+    expect(res.note).toMatch(message)
+  })
+
+  it("explains an empty answer (reasoning used up the tokens)", async () => {
+    const fetchImpl = vi.fn(
+      async () => new Response(JSON.stringify({ choices: [{ finish_reason: "length", message: { content: "" } }] })),
+    )
+    expect((await coachPlan(input, fetchImpl)).note).toMatch(/empty answer/)
+  })
+
+  it("explains an error sent inside a 200 reply", async () => {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ error: { code: 429, message: "upstream rate limit" } })))
+    expect((await coachPlan(input, fetchImpl)).note).toMatch(/limit reached/)
+  })
+
+  it("asks for low reasoning effort and room for the answer", async () => {
+    const fetchImpl = reply(JSON.stringify(goodPlan))
+    await coachPlan(input, fetchImpl)
+    const body = JSON.parse(String((fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1].body))
+    expect(body.reasoning).toEqual({ effort: "low", exclude: true })
+    expect(body.max_tokens).toBeGreaterThanOrEqual(8000)
   })
 })

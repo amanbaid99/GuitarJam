@@ -11,6 +11,9 @@ import { SeedButton } from "./seed-button"
 
 export const metadata = { title: "Today" }
 
+// Free AI models can be slow: give planning up to 2 minutes.
+export const maxDuration = 120
+
 export default function TodayPage() {
   return (
     <main className="flex flex-col gap-5">

@@ -95,6 +95,11 @@ export function SetEditor({ draft, songs, sourceNote, onSaved, onCancel }: Props
 
   return (
     <div className="flex flex-col gap-4">
+      {!draft.id && (
+        <p className="rounded-2xl bg-accent/15 px-4 py-3 text-sm font-medium text-accent" role="status">
+          Not saved yet. Check the order, then tap Save set.
+        </p>
+      )}
       <label className="flex flex-col gap-1.5">
         <span className="text-sm text-muted">Set name</span>
         <input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} className="field" />
@@ -219,7 +224,11 @@ export function SetEditor({ draft, songs, sourceNote, onSaved, onCancel }: Props
         </p>
       )}
 
-      <div className="flex gap-2">
+      {/* Stays visible above the tab bar while scrolling a long set. */}
+      <div
+        className="sticky z-10 -mx-2 flex gap-2 rounded-2xl border border-border bg-surface/95 p-2 backdrop-blur"
+        style={{ bottom: "calc(5rem + env(safe-area-inset-bottom))" }}
+      >
         <button type="button" onClick={onCancel} disabled={pending} className="btn-ghost flex-1">
           Cancel
         </button>

@@ -89,12 +89,12 @@ describe("extractSongs", () => {
 
   it("explains when the AI is down", async () => {
     const res = await extractSongs("data:image/jpeg;base64,AAAA", families, [], reply("busy", 503))
-    expect(res).toEqual({ ok: false, error: expect.stringMatching(/Could not read/) })
+    expect(res).toEqual({ ok: false, error: expect.stringMatching(/unavailable/) })
   })
 
   it("explains when the key is missing", async () => {
     delete process.env.OPENROUTER_API_KEY
     const res = await extractSongs("data:image/jpeg;base64,AAAA", families, [])
-    expect(res).toEqual({ ok: false, error: expect.stringMatching(/OpenRouter key/) })
+    expect(res).toEqual({ ok: false, error: expect.stringMatching(/OPENROUTER_API_KEY/) })
   })
 })

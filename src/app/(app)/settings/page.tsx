@@ -1,8 +1,12 @@
 import Link from "next/link"
+import { AiCheck } from "./ai-check"
 import { ThemePicker } from "./theme-picker"
 import { UpdateCheck } from "./update-check"
 
 export const metadata = { title: "Settings" }
+
+// The AI test can wait on a slow free model.
+export const maxDuration = 120
 
 export default function SettingsPage() {
   return (
@@ -20,6 +24,7 @@ export default function SettingsPage() {
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
       </header>
       <ThemePicker />
+      <AiCheck />
       <UpdateCheck />
     </main>
   )
