@@ -16,7 +16,8 @@ Stack: Next.js 16 (App Router, Cache Components) + TypeScript + Tailwind 4, Supa
 - [x] Step 4: performance mode (family medleys and sets, swipe, keeps screen awake)
 - [x] Step 5: Today screen (week summary, timed session plan, metronome, one-tap session log)
 - [x] Step 6: AI practice coach via OpenRouter (free NVIDIA Nemotron), validated, falls back to the built-in plan
-- [ ] Steps 7 to 10: see HANDOFF.md
+- [x] Step 7: Sets (AI set builder with built-in fallback, drag to reorder, Go-to set, play in performance mode)
+- [ ] Steps 8 to 10: see HANDOFF.md
 
 ## Run locally
 

@@ -2,11 +2,13 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database, TablesInsert } from "@/lib/database.types"
 import { SEED_REPERTOIRE, type SeedRepertoire } from "./repertoire"
 import { SEED_SKILLS, type SeedSkill } from "./skills"
+import { goToSet } from "@/lib/sets/template"
 
 export type SeedResult = {
   families: number
   songs: number
   skills: number
+  sets: number
 }
 
 const songKey = (title: string, artist: string | null) =>
@@ -96,9 +98,44 @@ export async function seedUser(
     .select("id")
   if (skillErr) throw skillErr
 
+  // 4. The default "Go-to set", only if you have no sets yet.
+  let setsAdded = 0
+  const { count: setCount, error: setCountErr } = await supabase
+    .from("sets")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+  if (setCountErr) throw setCountErr
+  if (!setCount) {
+    const [{ data: allSongs, error: e1 }, { data: allFamilies, error: e2 }] = await Promise.all([
+      supabase.from("songs").select("id, title, artist, status, difficulty, style, family_id").eq("user_id", userId),
+      supabase.from("families").select("id, name, vibe").eq("user_id", userId),
+    ])
+    if (e1 ?? e2) throw e1 ?? e2
+    const fam = new Map((allFamilies ?? []).map((f) => [f.id, f]))
+    const set = goToSet(
+      (allSongs ?? []).map((s) => ({
+        ...s,
+        family_name: s.family_id ? (fam.get(s.family_id)?.name ?? null) : null,
+        family_vibe: s.family_id ? (fam.get(s.family_id)?.vibe ?? null) : null,
+      })),
+    )
+    if (set.song_ids.length) {
+      const { error } = await supabase.from("sets").insert({
+        user_id: userId,
+        name: set.name,
+        room: "Anywhere, any crowd",
+        notes: set.notes,
+        song_ids: set.song_ids,
+      })
+      if (error) throw error
+      setsAdded = 1
+    }
+  }
+
   return {
     families: newFamilies.length,
     songs: newSongs.length,
     skills: skillRows?.length ?? 0,
+    sets: setsAdded,
   }
 }

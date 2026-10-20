@@ -15,7 +15,7 @@ export async function loadStarterData(): Promise<SeedState> {
     const result = await seedUser(supabase, user.id)
     refresh()
     return {
-      message: `Added ${result.families} families, ${result.songs} songs and ${result.skills} skills.`,
+      message: `Added ${result.families} families, ${result.songs} songs, ${result.skills} skills${result.sets ? " and your Go-to set" : ""}.`,
     }
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Something went wrong loading your songs." }

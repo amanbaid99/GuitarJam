@@ -113,6 +113,7 @@ export type Database = {
           created_at: string
           id: string
           name: string | null
+          notes: string | null
           room: string | null
           song_ids: string[]
           user_id: string
@@ -121,6 +122,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string | null
+          notes?: string | null
           room?: string | null
           song_ids: string[]
           user_id?: string
@@ -129,6 +131,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string | null
+          notes?: string | null
           room?: string | null
           song_ids?: string[]
           user_id?: string
