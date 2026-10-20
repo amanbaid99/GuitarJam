@@ -1,4 +1,4 @@
--- Riyaaz: initial schema
+-- My Jamm: initial schema
 -- Every table is owned by one user and locked down with RLS (user_id = auth.uid()).
 -- user_id defaults to auth.uid(), so the app never has to send it.
 

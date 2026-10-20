@@ -1,4 +1,4 @@
-# Riyaaz
+# My Jamm
 
 A personal guitar practice app: planned sessions, a repertoire grouped by chord family,
 quick sets for any room, and performance mode. Single user. See [HANDOFF.md](HANDOFF.md)
@@ -10,7 +10,7 @@ Stack: Next.js 16 (App Router, Cache Components) + TypeScript + Tailwind 4, Supa
 ## Status
 
 - [x] Step 1: project setup, schema with RLS, magic-link auth, seed
-- [ ] Step 2: repertoire screen
+- [x] Step 2: repertoire screen (families, filters, search, inline edit, one-tap status)
 - [ ] Step 3: theory engine, transpose and capo
 - [ ] Steps 4 to 10: see HANDOFF.md
 
@@ -42,13 +42,13 @@ scripts/seed.ts        CLI seed (needs the service role key)
 ## One-time Supabase setup (dashboard)
 
 1. **Authentication > URL Configuration**
-   - Site URL: your Vercel production URL (for example `https://riyaaz.vercel.app`).
+   - Site URL: your Vercel production URL (for example `https://guitar-jam-aman-projects8.vercel.app`).
    - Redirect URLs: add `http://localhost:3000/**` and `https://*.vercel.app/**`.
 2. **Authentication > Emails > Templates**. Paste this into both **Magic Link** and
    **Confirm signup** (the first sign-in uses Confirm signup, later ones use Magic Link):
 
    ```html
-   <h2>Sign in to Riyaaz</h2>
+   <h2>Sign in to My Jamm</h2>
    <p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email">Tap to sign in</a></p>
    <p>Or type this code in the app: <strong>{{ .Token }}</strong></p>
    ```

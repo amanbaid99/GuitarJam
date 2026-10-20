@@ -6,9 +6,9 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] })
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: { default: "Riyaaz", template: "%s | Riyaaz" },
+  title: { default: "My Jamm", template: "%s | My Jamm" },
   description: "Guitar practice, repertoire and sets.",
-  appleWebApp: { capable: true, title: "Riyaaz", statusBarStyle: "black-translucent" },
+  appleWebApp: { capable: true, title: "My Jamm", statusBarStyle: "black-translucent" },
 }
 
 export const viewport: Viewport = {
