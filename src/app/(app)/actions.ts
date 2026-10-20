@@ -2,16 +2,24 @@
 
 import { refresh } from "next/cache"
 import { requireUser } from "@/lib/auth"
-import { seedUser } from "@/lib/seed"
+import { seedFamiliesOnly, seedUser } from "@/lib/seed"
 import { createClient } from "@/lib/supabase/server"
 
 export type SeedState = { message?: string; error?: string }
 
-/** Loads the starter repertoire and skills into your account. Safe to tap twice. */
+/**
+ * Starter data. The owner gets their full Notion repertoire; invited members get
+ * the 5 chord families and add their own songs. Safe to tap twice.
+ */
 export async function loadStarterData(): Promise<SeedState> {
   const user = await requireUser()
   const supabase = await createClient()
   try {
+    if (user.role !== "owner") {
+      const result = await seedFamiliesOnly(supabase, user.id)
+      refresh()
+      return { message: `Added ${result.families} chord families. Now add your first song.` }
+    }
     const result = await seedUser(supabase, user.id)
     refresh()
     return {

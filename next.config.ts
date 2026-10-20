@@ -6,6 +6,10 @@ const APP_VERSION = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? `local-${D
 const BUILT_AT = new Date().toISOString()
 
 const nextConfig: NextConfig = {
+  // Songs is the home screen.
+  async redirects() {
+    return [{ source: "/", destination: "/repertoire", permanent: false }]
+  },
   env: {
     APP_VERSION,
     APP_BUILT_AT: BUILT_AT,

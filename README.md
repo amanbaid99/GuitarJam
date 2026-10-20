@@ -18,7 +18,11 @@ Stack: Next.js 16 (App Router, Cache Components) + TypeScript + Tailwind 4, Supa
 - [x] Step 6: AI practice coach via OpenRouter (free NVIDIA Nemotron), validated, falls back to the built-in plan
 - [x] Step 7: Sets (AI set builder with built-in fallback, drag to reorder, Go-to set, play in performance mode)
 - [x] Step 8: Add song (manual, or screenshot import via Nemotron vision; lyrics guard; family suggested by the theory engine; review before saving)
-- [ ] Steps 9 and 10: see HANDOFF.md
+- [x] Song page: your lyrics with chords above the words, Save as my version, practice history
+- [x] Songs: Songs I know filter; sort by family, A to Z, key, least played, difficulty
+- [x] Invite only: Request access on sign-in, owner approves in Settings > Members
+- [x] Songs is the home screen; tabs are Songs, Sets, Today. Progress screen dropped
+- [ ] Step 10: installable app, icons, polish
 
 ## Run locally
 

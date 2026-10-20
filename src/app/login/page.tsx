@@ -23,5 +23,5 @@ async function LoginFormWithError({
   searchParams: PageProps<"/login">["searchParams"]
 }) {
   const params = await searchParams
-  return <LoginForm linkError={params.error === "link"} />
+  return <LoginForm linkError={params.error === "link"} accessError={params.error === "access"} />
 }

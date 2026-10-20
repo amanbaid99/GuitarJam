@@ -60,7 +60,8 @@ export async function updateSession(request: NextRequest) {
     return redirect
   }
 
-  if (signedIn && path === "/login") {
+  // Signed in but sent to /login?error=... (for example not invited): let them see why.
+  if (signedIn && path === "/login" && !request.nextUrl.searchParams.has("error")) {
     const url = request.nextUrl.clone()
     url.pathname = "/"
     url.search = ""

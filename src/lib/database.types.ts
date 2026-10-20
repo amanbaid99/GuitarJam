@@ -244,6 +244,28 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_sign_in: { Args: { p_email: string }; Returns: boolean }
+      decide_access: { Args: { p_request_id: string; p_approve: boolean }; Returns: undefined }
+      is_member: { Args: Record<PropertyKey, never>; Returns: boolean }
+      my_role: { Args: Record<PropertyKey, never>; Returns: string | null }
+      owner_members: {
+        Args: Record<PropertyKey, never>
+        Returns: { email: string; role: string; added_at: string }[]
+      }
+      owner_requests: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          email: string
+          name: string | null
+          note: string | null
+          status: string
+          created_at: string
+          decided_at: string | null
+        }[]
+      }
+      remove_member: { Args: { p_email: string }; Returns: undefined }
+      request_access: { Args: { p_email: string; p_name?: string | null; p_note?: string | null }; Returns: string }
       log_session: {
         Args: {
           p_minutes: number

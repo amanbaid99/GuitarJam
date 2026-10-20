@@ -14,6 +14,11 @@ export type SeedResult = {
 const songKey = (title: string, artist: string | null) =>
   `${title.trim().toLowerCase()}|${(artist ?? "").trim().toLowerCase()}`
 
+/** What a newly invited member starts with: the chord families, no songs. */
+export function seedFamiliesOnly(supabase: SupabaseClient<Database>, userId: string) {
+  return seedUser(supabase, userId, { families: SEED_REPERTOIRE.families, songs: [] }, [])
+}
+
 /**
  * Loads the starter families, songs and skills for one user.
  * Safe to run more than once: it only adds what is missing and never
@@ -83,20 +88,24 @@ export async function seedUser(
   }
 
   // 3. Skills. ignoreDuplicates keeps any level already changed in the app.
-  const { data: skillRows, error: skillErr } = await supabase
-    .from("skills")
-    .upsert(
-      skills.map((s) => ({
-        user_id: userId,
-        area: s.area,
-        name: s.name,
-        level: s.level,
-        is_focus: s.is_focus ?? false,
-      })),
-      { onConflict: "user_id,area,name", ignoreDuplicates: true },
-    )
-    .select("id")
-  if (skillErr) throw skillErr
+  let skillsAdded = 0
+  if (skills.length) {
+    const { data: skillRows, error: skillErr } = await supabase
+      .from("skills")
+      .upsert(
+        skills.map((s) => ({
+          user_id: userId,
+          area: s.area,
+          name: s.name,
+          level: s.level,
+          is_focus: s.is_focus ?? false,
+        })),
+        { onConflict: "user_id,area,name", ignoreDuplicates: true },
+      )
+      .select("id")
+    if (skillErr) throw skillErr
+    skillsAdded = skillRows?.length ?? 0
+  }
 
   // 4. The default "Go-to set", only if you have no sets yet.
   let setsAdded = 0
@@ -135,7 +144,7 @@ export async function seedUser(
   return {
     families: newFamilies.length,
     songs: newSongs.length,
-    skills: skillRows?.length ?? 0,
+    skills: skillsAdded,
     sets: setsAdded,
   }
 }

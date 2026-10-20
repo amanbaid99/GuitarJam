@@ -31,7 +31,7 @@ export function SongCard({ song, today, detail }: Props) {
         <h3 className="text-lg leading-snug font-semibold">{song.title}</h3>
         {song.artist && <p className="truncate text-sm text-muted">{song.artist}</p>}
         <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
-          {[detail ?? meta.join(" · "), `played ${lastPractisedLabel(song.last_practised, today).toLowerCase()}`]
+          {[detail ?? meta.join(" · "), song.last_practised ? `played ${lastPractisedLabel(song.last_practised, today).toLowerCase()}` : "not played yet"]
             .filter(Boolean)
             .join(" · ")}
           {song.lyrics && <span>· lyrics</span>}

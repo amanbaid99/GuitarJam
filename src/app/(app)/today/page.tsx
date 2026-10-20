@@ -5,9 +5,8 @@ import { requireUser } from "@/lib/auth"
 import { addDays, shortDate, startOfWeekISO, todayISO } from "@/lib/dates"
 import { WEEKLY_SESSION_TARGET } from "@/lib/domain"
 import { createClient } from "@/lib/supabase/server"
-import { MetronomePanel } from "./_today/metronome-panel"
-import { Planner } from "./_today/planner"
-import { SeedButton } from "./seed-button"
+import { MetronomePanel } from "../_today/metronome-panel"
+import { Planner } from "../_today/planner"
 
 export const metadata = { title: "Today" }
 
@@ -90,15 +89,12 @@ async function TodayContent() {
       </section>
 
       {songRows.length === 0 ? (
-        <section className="card flex flex-col gap-4">
-          <div>
-            <h2 className="text-xl font-semibold">Your library is empty</h2>
-            <p className="mt-1 text-muted">
-              Load the songs, chord families and skills you brought over from Notion. You only
-              need to do this once.
-            </p>
-          </div>
-          <SeedButton />
+        <section className="card flex flex-col gap-3">
+          <h2 className="text-xl font-semibold">No songs yet</h2>
+          <p className="text-muted">Add a few songs first, then plan a practice session here.</p>
+          <Link href="/repertoire" className="btn-primary">
+            Go to Songs
+          </Link>
         </section>
       ) : (
         <Planner
