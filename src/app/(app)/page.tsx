@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { Suspense } from "react"
 import { signOut } from "@/app/login/actions"
 import { requireUser } from "@/lib/auth"
@@ -11,8 +12,20 @@ export const metadata = { title: "Today" }
 export default function TodayPage() {
   return (
     <main className="flex flex-col gap-5">
-      <header className="flex items-baseline justify-between">
+      <header className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Today</h1>
+        <Link
+          href="/settings"
+          aria-label="Settings"
+          className="-mr-2 flex h-11 w-11 items-center justify-center rounded-full text-muted"
+        >
+          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+            <path
+              d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm7.4-3a7.4 7.4 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7.3 7.3 0 0 0-2-1.2L14.5 3h-4l-.4 2.6a7.3 7.3 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6a7.4 7.4 0 0 0 0 2.4l-2 1.6 2 3.4 2.4-1a7.3 7.3 0 0 0 2 1.2l.4 2.6h4l.4-2.6a7.3 7.3 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2Z"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </Link>
       </header>
       <Suspense fallback={<div className="card h-40 animate-pulse" />}>
         <Summary />

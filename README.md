@@ -11,7 +11,8 @@ Stack: Next.js 16 (App Router, Cache Components) + TypeScript + Tailwind 4, Supa
 
 - [x] Step 1: project setup, schema with RLS, magic-link auth, seed
 - [x] Step 2: repertoire screen (families, filters, search, inline edit, one-tap status)
-- [ ] Step 3: theory engine, transpose and capo
+- [x] Step 3: theory engine (`src/lib/theory`, tested), transpose and capo on song cards
+- [x] Theme: black / white / beige background and 6 accent colours (Settings, saved per device)
 - [ ] Steps 4 to 10: see HANDOFF.md
 
 ## Run locally

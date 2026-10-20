@@ -1,35 +1,57 @@
 @import "tailwindcss";
 
-/* Dark by default (you are often playing in a dim room). Light only if the phone asks for it. */
-:root {
+/* Background: black (default), white or beige. Chosen in Settings, saved per device. */
+:root,
+[data-bg="black"] {
   --bg: #0d0f12;
   --surface: #171a1f;
   --surface-2: #20242b;
   --border: #2c313a;
   --fg: #eef0f3;
   --muted: #9aa3ae;
-  --accent: #f2a541;
-  --accent-fg: #1a1205;
   --danger: #ff7b72;
   --ok: #5fd38d;
+  --accent: var(--accent-on-dark);
+  --accent-fg: #14110c;
   color-scheme: dark;
 }
 
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-    --bg: #f6f5f2;
-    --surface: #ffffff;
-    --surface-2: #efede8;
-    --border: #dcd8d0;
-    --fg: #16181c;
-    --muted: #5e6670;
-    --accent: #b86a00;
-    --accent-fg: #ffffff;
-    --danger: #c0392b;
-    --ok: #1e8a4c;
-    color-scheme: light;
-  }
+[data-bg="white"] {
+  --bg: #ffffff;
+  --surface: #f6f6f7;
+  --surface-2: #ececef;
+  --border: #dcdce1;
+  --fg: #16181c;
+  --muted: #5d636c;
+  --danger: #c0392b;
+  --ok: #1e8a4c;
+  --accent: var(--accent-on-light);
+  --accent-fg: #ffffff;
+  color-scheme: light;
 }
+
+[data-bg="beige"] {
+  --bg: #f1e8d6;
+  --surface: #f9f3e7;
+  --surface-2: #e6dac2;
+  --border: #d5c6a8;
+  --fg: #2b2218;
+  --muted: #6c5d48;
+  --danger: #b23a2b;
+  --ok: #2e7d46;
+  --accent: var(--accent-on-light);
+  --accent-fg: #ffffff;
+  color-scheme: light;
+}
+
+/* Accent: a bright shade for black, a deeper one for white and beige (keeps text readable). */
+:root,
+[data-accent="amber"] { --accent-on-dark: #f2a541; --accent-on-light: #a85d00; }
+[data-accent="teal"] { --accent-on-dark: #2dd4bf; --accent-on-light: #0f766e; }
+[data-accent="rose"] { --accent-on-dark: #fb7185; --accent-on-light: #be123c; }
+[data-accent="violet"] { --accent-on-dark: #a78bfa; --accent-on-light: #6d28d9; }
+[data-accent="blue"] { --accent-on-dark: #60a5fa; --accent-on-light: #1d4ed8; }
+[data-accent="green"] { --accent-on-dark: #4ade80; --accent-on-light: #15803d; }
 
 @theme inline {
   --color-bg: var(--bg);
