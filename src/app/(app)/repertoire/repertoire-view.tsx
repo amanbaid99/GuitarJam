@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useMemo, useState } from "react"
 import { DIFFICULTIES, SONG_STATUSES, STYLES } from "@/lib/domain"
 import {
@@ -32,6 +33,17 @@ export function RepertoireView({ families, songs, today }: Props) {
     () => groupByFamily(families, visible).filter((g) => g.songs.length > 0 || (!filtering && g.family)),
     [families, visible, filtering],
   )
+
+  // Songs per family that appear in Performance mode (everything but "want to learn").
+  const playable = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const s of songs) {
+      if (s.family_id && s.status !== "want_to_learn") {
+        counts.set(s.family_id, (counts.get(s.family_id) ?? 0) + 1)
+      }
+    }
+    return counts
+  }, [songs])
 
   if (songs.length === 0) {
     return (
@@ -115,6 +127,14 @@ export function RepertoireView({ families, songs, today }: Props) {
               </span>
               <Chevron open={isOpen} />
             </button>
+            {isOpen && group.family && (playable.get(group.family.id) ?? 0) > 0 && (
+              <Link
+                href={`/perform/family/${group.family.id}`}
+                className="btn-primary min-h-12 text-base"
+              >
+                Play medley ({playable.get(group.family.id)} songs)
+              </Link>
+            )}
             {isOpen && (
               <ul className="flex flex-col gap-2">
                 {group.songs.map((song) => (
