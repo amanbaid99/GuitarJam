@@ -31,3 +31,15 @@ export function addDays(dateISO: string, days: number): string {
   d.setUTCDate(d.getUTCDate() + days)
   return d.toISOString().slice(0, 10)
 }
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+/**
+ * "Sun 18 Oct". Built by hand, not with toLocaleDateString, so the server and
+ * the phone always produce the same text (locale data differs between them).
+ */
+export function shortDate(dateISO: string): string {
+  const d = new Date(`${dateISO}T00:00:00Z`)
+  return `${WEEKDAYS[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`
+}

@@ -139,7 +139,7 @@ export function RepertoireView({ families, songs, today }: Props) {
               <ul className="flex flex-col gap-2">
                 {group.songs.map((song) => (
                   <li key={song.id}>
-                    <SongCard song={song} families={families} today={today} />
+                    <SongCard song={song} today={today} />
                   </li>
                 ))}
               </ul>

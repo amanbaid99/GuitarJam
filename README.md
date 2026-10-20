@@ -92,6 +92,7 @@ fails, the app uses its built-in plan or set builder. Settings > Test AI connect
 
 ## Rules
 
-- Never store or show full lyrics. A first-line hint is capped at 60 characters in the database.
+- Lyrics come only from what you type into a song's Lyrics box (chords inline as `[G]word`).
+  They are private to your account and never sent to the AI. Screenshot import still strips lyrics.
 - No em dashes in UI copy or AI output.
 - The AI is never trusted for theory or transposition (step 3 adds a tested module for that).

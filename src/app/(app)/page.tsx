@@ -2,7 +2,7 @@ import Link from "next/link"
 import { Suspense } from "react"
 import { signOut } from "@/app/login/actions"
 import { requireUser } from "@/lib/auth"
-import { addDays, startOfWeekISO, todayISO } from "@/lib/dates"
+import { addDays, shortDate, startOfWeekISO, todayISO } from "@/lib/dates"
 import { WEEKLY_SESSION_TARGET } from "@/lib/domain"
 import { createClient } from "@/lib/supabase/server"
 import { MetronomePanel } from "./_today/metronome-panel"
@@ -151,12 +151,7 @@ async function TodayContent() {
 function formatDay(dateISO: string, todayIso: string) {
   if (dateISO === todayIso) return "Today"
   if (dateISO === addDays(todayIso, -1)) return "Yesterday"
-  return new Date(`${dateISO}T00:00:00Z`).toLocaleDateString("en-GB", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    timeZone: "UTC",
-  })
+  return shortDate(dateISO)
 }
 
 function Stat({ label, value, done }: { label: string; value: string; done?: boolean }) {

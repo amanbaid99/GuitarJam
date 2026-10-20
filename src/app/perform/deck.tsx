@@ -2,14 +2,18 @@
 
 import Link from "next/link"
 import { useCallback, useEffect, useRef, useState } from "react"
+import { LyricsView } from "@/components/lyrics-view"
 import { useWakeLock } from "@/lib/use-wake-lock"
 
 export type DeckSong = {
   id: string
   title: string
   family: string | null
+  /** How to play it: "Capo 4 · G shapes · sounds in B". */
+  play: string | null
   chords: string | null
-  keyCapo: string | null
+  /** Your lyrics, chords inline, already in your key. */
+  lyrics: string | null
   hint: string | null
 }
 
@@ -115,21 +119,21 @@ export function Deck({ title, songs, backHref }: { title: string; songs: DeckSon
             <div>
               <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-6xl">{song.title}</h1>
               <p className="mt-2 text-xl text-muted">
-                {[song.family, song.keyCapo].filter(Boolean).join(" · ")}
+                {[song.family, song.play].filter(Boolean).join(" · ")}
               </p>
             </div>
             {song.hint && <p className="text-2xl italic text-accent">&ldquo;{song.hint}&rdquo;</p>}
-            {song.chords ? (
+            {song.chords && (
               <p
                 className={`font-mono leading-snug font-semibold whitespace-pre-wrap ${
-                  song.chords.length > 120 ? "text-2xl sm:text-4xl" : "text-3xl sm:text-5xl"
+                  song.lyrics ? "text-xl text-muted sm:text-2xl" : song.chords.length > 120 ? "text-2xl sm:text-4xl" : "text-3xl sm:text-5xl"
                 }`}
               >
                 {forStage(song.chords)}
               </p>
-            ) : (
-              <p className="text-2xl text-muted">No chords saved.</p>
             )}
+            {song.lyrics && <LyricsView text={song.lyrics} size="stage" />}
+            {!song.chords && !song.lyrics && <p className="text-2xl text-muted">No chords saved.</p>}
           </section>
         ))}
       </div>

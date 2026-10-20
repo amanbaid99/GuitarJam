@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { shortDate } from "@/lib/dates"
 import { APP_BUILT_AT, APP_VERSION } from "@/lib/version"
 
 type Status =
@@ -46,9 +47,8 @@ export function UpdateCheck() {
     void reloadFresh()
   }
 
-  const built = APP_BUILT_AT
-    ? new Date(APP_BUILT_AT).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
-    : null
+  // Same text on server and phone (no locale formatting).
+  const built = APP_BUILT_AT ? `${shortDate(APP_BUILT_AT.slice(0, 10))}, ${APP_BUILT_AT.slice(11, 16)} UTC` : null
 
   return (
     <section className="flex flex-col gap-3" aria-label="App updates">

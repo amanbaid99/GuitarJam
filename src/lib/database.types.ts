@@ -176,6 +176,9 @@ export type Database = {
           id: string
           key_capo: string | null
           last_practised: string | null
+          lyrics: string | null
+          my_capo: number | null
+          my_transpose: number
           needs_verify: boolean
           notes: string | null
           status: string
@@ -194,6 +197,9 @@ export type Database = {
           id?: string
           key_capo?: string | null
           last_practised?: string | null
+          lyrics?: string | null
+          my_capo?: number | null
+          my_transpose?: number
           needs_verify?: boolean
           notes?: string | null
           status: string
@@ -212,6 +218,9 @@ export type Database = {
           id?: string
           key_capo?: string | null
           last_practised?: string | null
+          lyrics?: string | null
+          my_capo?: number | null
+          my_transpose?: number
           needs_verify?: boolean
           notes?: string | null
           status?: string

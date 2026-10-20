@@ -68,3 +68,44 @@ export async function markVerified(id: string): Promise<ActionResult> {
   refresh()
   return { ok: true }
 }
+
+/** Saves how you play it: transpose (semitones) and capo (null = the written capo). */
+export async function saveMyVersion(id: string, transpose: number, capo: number | null): Promise<ActionResult> {
+  await requireUser()
+  const parsed = z
+    .object({
+      id: z.uuid(),
+      transpose: z.number().int().min(-11).max(11),
+      capo: z.number().int().min(0).max(12).nullable(),
+    })
+    .safeParse({ id, transpose, capo })
+  if (!parsed.success) return { ok: false, error: "That transpose or capo is out of range." }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from("songs")
+    .update({ my_transpose: parsed.data.transpose, my_capo: parsed.data.capo })
+    .eq("id", id)
+  if (error) return { ok: false, error: error.message }
+  refresh()
+  return { ok: true }
+}
+
+/** Your own lyrics, typed by you. Private; never sent to the AI. */
+export async function saveLyrics(id: string, lyrics: string): Promise<ActionResult> {
+  await requireUser()
+  const parsed = z
+    .object({ id: z.uuid(), lyrics: z.string().max(20000, "Lyrics are too long (20,000 characters max).") })
+    .safeParse({ id, lyrics })
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the lyrics." }
+
+  const supabase = await createClient()
+  const text = parsed.data.lyrics.replace(/\r\n/g, "\n").trim()
+  const { error } = await supabase
+    .from("songs")
+    .update({ lyrics: text || null })
+    .eq("id", id)
+  if (error) return { ok: false, error: error.message }
+  refresh()
+  return { ok: true }
+}

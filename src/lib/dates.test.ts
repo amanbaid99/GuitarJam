@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { addDays, mondayOf, startOfWeekISO, todayISO } from "./dates"
+import { addDays, mondayOf, shortDate, startOfWeekISO, todayISO } from "./dates"
 
 describe("dates", () => {
   it("uses the app time zone for today", () => {
@@ -26,5 +26,12 @@ describe("addDays", () => {
   it("moves across months and years", () => {
     expect(addDays("2026-10-20", -13)).toBe("2026-10-07")
     expect(addDays("2026-12-31", 1)).toBe("2027-01-01")
+  })
+})
+
+describe("shortDate", () => {
+  it("formats the same way everywhere", () => {
+    expect(shortDate("2026-10-18")).toBe("Sun 18 Oct")
+    expect(shortDate("2027-01-01")).toBe("Fri 1 Jan")
   })
 })

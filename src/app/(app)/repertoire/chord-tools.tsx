@@ -1,87 +1,100 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import {
-  capoOptions,
-  extractChords,
-  guessKey,
-  keyName,
-  numberOf,
-  parseCapo,
-  parseKey,
-  prefersFlats,
-  stripFretDiagrams,
-  transposeKey,
-  transposeText,
-} from "@/lib/theory"
+import { useMemo, useState, useTransition } from "react"
+import { LyricsView } from "@/components/lyrics-view"
+import { chartView, playLabel } from "@/lib/song-view"
+import { capoOptions, extractChords, keyName, numberOf, transposeText } from "@/lib/theory"
 
 type Props = {
-  chords: string
+  chords: string | null
+  lyrics: string | null
   keyCapo: string | null
-  /** The family's key, when the song has a family. Otherwise the key is guessed. */
   familyKey: string | null
+  savedTranspose: number
+  savedCapo: number | null
+  /** Saves the current transpose and capo as "my version". */
+  onSave?: (transpose: number, capo: number | null) => Promise<{ ok: boolean; error?: string }>
 }
 
 const MAX_CAPO = 9
 
 /**
- * The chord chart with transpose and capo controls. All the maths comes from
- * the tested theory module; nothing here is AI.
- *
- * The chart is written as shapes. If key/capo says "Capo 3", those shapes sound
- * 3 semitones higher. Transpose moves the sound; capo picks which shapes to play.
+ * Chords (and your lyrics) as you play them, with transpose and capo.
+ * All maths comes from the tested theory module; nothing here is AI.
  */
-export function ChordTools({ chords, keyCapo, familyKey }: Props) {
-  const baseCapo = Math.min(parseCapo(keyCapo), MAX_CAPO)
+export function ChordTools({ chords, lyrics, keyCapo, familyKey, savedTranspose, savedCapo, onSave }: Props) {
   const [open, setOpen] = useState(false)
-  const [transpose, setTranspose] = useState(0)
-  const [capo, setCapo] = useState(baseCapo)
+  const [transpose, setTranspose] = useState(savedTranspose)
+  const [capo, setCapo] = useState<number | null>(savedCapo)
+  const [saved, setSaved] = useState({ transpose: savedTranspose, capo: savedCapo })
+  const [message, setMessage] = useState<string | null>(null)
+  const [pending, startTransition] = useTransition()
 
-  const writtenKey = useMemo(
-    () => (familyKey ? parseKey(familyKey) : null) ?? guessKey(chords),
-    [familyKey, chords],
-  )
+  const view = chartView({ chords, lyrics, keyCapo, familyKey, transpose, capo })
+  const original = chartView({ chords, lyrics, keyCapo, familyKey, transpose: 0, capo: null })
+  const effectiveCapo = capo ?? view.baseCapo
+  const isSaved = transpose === saved.transpose && effectiveCapo === (saved.capo ?? view.baseCapo)
+  const isOriginal = transpose === 0 && effectiveCapo === view.baseCapo
 
   const numbers = useMemo(() => {
-    if (!writtenKey) return []
-    return extractChords(chords)
-      .map((c) => numberOf(c, writtenKey))
+    const key = original.writtenKey
+    if (!key) return []
+    const text = [chords, lyrics?.match(/\[[^\]]+\]/g)?.join(" ")].filter(Boolean).join(" ")
+    return extractChords(text)
+      .map((c) => numberOf(c, key))
       .filter((n): n is string => Boolean(n))
-  }, [chords, writtenKey])
-
-  const soundingKey = writtenKey ? transposeKey(writtenKey, baseCapo + transpose) : null
-  const shapesKey = soundingKey ? transposeKey(soundingKey, -capo) : null
-  const shift = baseCapo + transpose - capo
-  const changed = transpose !== 0 || capo !== baseCapo
-
-  // When the shapes change, the original fret diagrams no longer apply, so hide them.
-  const shapesMoved = shift % 12 !== 0
-  const chart = shapesMoved
-    ? stripFretDiagrams(transposeText(chords, shift, shapesKey ? prefersFlats(shapesKey) : false))
-    : chords
+  }, [chords, lyrics, original.writtenKey])
 
   const suggestion = useMemo(() => {
-    const sounding = transposeText(chords, baseCapo + transpose)
+    const source = [chords, lyrics?.match(/\[[^\]]+\]/g)?.join(" ")].filter(Boolean).join(" ")
+    if (!source) return null
+    const sounding = transposeText(source, view.baseCapo + transpose)
+    const options = capoOptions(sounding, MAX_CAPO)
     const [best] = capoOptions(sounding, 7)
-    if (!best || best.capo === capo) return null
-    const current = capoOptions(sounding, MAX_CAPO).find((o) => o.capo === capo)
-    return current && best.openShapes > current.openShapes ? best : null
-  }, [chords, baseCapo, transpose, capo])
+    const current = options.find((o) => o.capo === effectiveCapo)
+    return best && current && best.capo !== effectiveCapo && best.openShapes > current.openShapes ? best : null
+  }, [chords, lyrics, view.baseCapo, transpose, effectiveCapo])
+
+  function save(nextTranspose: number, nextCapo: number | null) {
+    if (!onSave) return
+    setMessage(null)
+    startTransition(async () => {
+      const res = await onSave(nextTranspose, nextCapo)
+      if (res.ok) {
+        setSaved({ transpose: nextTranspose, capo: nextCapo })
+        setMessage("Saved as your version.")
+      } else setMessage(res.error ?? "Could not save.")
+    })
+  }
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="rounded-2xl bg-bg p-4 font-mono text-base leading-relaxed whitespace-pre-wrap">
-        {chart}
-      </div>
-
-      {numbers.length > 0 && writtenKey && (
-        <p className="text-sm text-muted">
-          <span className="font-medium text-fg">Numbers</span> in {keyName(writtenKey)}:{" "}
-          {numbers.join(" · ")}
+      {view.shapesKey && (
+        <p className="text-sm font-medium">
+          {playLabel(view)}
+          {!isOriginal && isSaved && <span className="ml-2 text-xs text-accent">My version</span>}
         </p>
       )}
 
-      {writtenKey && (
+      {view.chords && (
+        <div className="rounded-2xl bg-bg p-4 font-mono text-base leading-relaxed whitespace-pre-wrap">
+          {view.chords}
+        </div>
+      )}
+
+      {view.lyrics && (
+        <div className="rounded-2xl bg-bg p-4">
+          <LyricsView text={view.lyrics} />
+        </div>
+      )}
+
+      {numbers.length > 0 && original.writtenKey && (
+        <p className="text-sm text-muted">
+          <span className="font-medium text-fg">Numbers</span> in {keyName(original.writtenKey)}: {numbers.join(" · ")}
+        </p>
+      )}
+
+      {view.soundingKey && (
         <>
           <button
             type="button"
@@ -90,27 +103,24 @@ export function ChordTools({ chords, keyCapo, familyKey }: Props) {
             className="btn-ghost min-h-11 justify-between text-sm"
           >
             <span>Transpose and capo</span>
-            <span className="text-muted">
-              {soundingKey && `Sounds in ${keyName(soundingKey)}`}
-              {capo > 0 ? ` · capo ${capo}` : ""}
-            </span>
+            <span className="text-muted">{open ? "Hide" : "Change"}</span>
           </button>
 
-          {open && soundingKey && shapesKey && (
+          {open && view.shapesKey && (
             <div className="flex flex-col gap-3 rounded-2xl border border-border p-3">
               <Stepper
                 label="Transpose"
-                value={transpose === 0 ? "Original" : `${transpose > 0 ? "+" : ""}${transpose}`}
-                detail={`Key of ${keyName(soundingKey)}`}
+                value={transpose === 0 ? "Original key" : `${transpose > 0 ? "+" : ""}${transpose}`}
+                detail={`Sounds in ${keyName(view.soundingKey)}`}
                 onMinus={() => setTranspose((t) => Math.max(-11, t - 1))}
                 onPlus={() => setTranspose((t) => Math.min(11, t + 1))}
               />
               <Stepper
                 label="Capo"
-                value={capo === 0 ? "None" : `Fret ${capo}`}
-                detail={`Play ${keyName(shapesKey)} shapes`}
-                onMinus={() => setCapo((c) => Math.max(0, c - 1))}
-                onPlus={() => setCapo((c) => Math.min(MAX_CAPO, c + 1))}
+                value={effectiveCapo === 0 ? "None" : `Fret ${effectiveCapo}`}
+                detail={`Play ${keyName(view.shapesKey)} shapes`}
+                onMinus={() => setCapo(Math.max(0, effectiveCapo - 1))}
+                onPlus={() => setCapo(Math.min(MAX_CAPO, effectiveCapo + 1))}
               />
               <div className="flex flex-wrap gap-2">
                 {suggestion && (
@@ -119,23 +129,38 @@ export function ChordTools({ chords, keyCapo, familyKey }: Props) {
                     onClick={() => setCapo(suggestion.capo)}
                     className="min-h-11 rounded-full bg-accent/15 px-4 text-sm font-medium text-accent"
                   >
-                    {suggestion.capo === 0 ? "Try no capo" : `Try capo ${suggestion.capo}`}:{" "}
-                    {suggestion.openShapes} of {suggestion.total} open shapes
+                    {suggestion.capo === 0 ? "Try no capo" : `Try capo ${suggestion.capo}`}: {suggestion.openShapes} of{" "}
+                    {suggestion.total} open shapes
                   </button>
                 )}
-                {changed && (
+                {!isOriginal && (
                   <button
                     type="button"
                     onClick={() => {
                       setTranspose(0)
-                      setCapo(baseCapo)
+                      setCapo(null)
                     }}
                     className="min-h-11 rounded-full border border-border px-4 text-sm"
                   >
-                    Reset
+                    Original
                   </button>
                 )}
               </div>
+              {onSave && (
+                <button
+                  type="button"
+                  onClick={() => save(transpose, capo === view.baseCapo ? null : capo)}
+                  disabled={pending || isSaved}
+                  className="btn-primary min-h-12 text-base"
+                >
+                  {pending ? "Saving..." : isSaved ? "This is your version" : "Save as my version"}
+                </button>
+              )}
+              {message && (
+                <p className="text-sm text-muted" role="status">
+                  {message}
+                </p>
+              )}
             </div>
           )}
         </>
