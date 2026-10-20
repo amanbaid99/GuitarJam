@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { ThemePicker } from "./theme-picker"
+import { UpdateCheck } from "./update-check"
 
 export const metadata = { title: "Settings" }
 
@@ -19,6 +20,7 @@ export default function SettingsPage() {
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
       </header>
       <ThemePicker />
+      <UpdateCheck />
     </main>
   )
 }
