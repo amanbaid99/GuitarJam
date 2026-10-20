@@ -67,7 +67,7 @@ describe("coachPlan", () => {
   })
 
   it("removes em dashes from AI text", async () => {
-    const plan = { ...goodPlan, why: "Keep it light — you are restarting." }
+    const plan = { ...goodPlan, why: "Keep it light \u2014 you are restarting." }
     const res = await coachPlan(input, reply(JSON.stringify(plan)))
     expect(res.plan.why).toBe("Keep it light, you are restarting.")
   })

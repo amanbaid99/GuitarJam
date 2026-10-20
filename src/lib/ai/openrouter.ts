@@ -106,7 +106,7 @@ export async function chatJson<T>(opts: ChatJsonOptions<T>): Promise<ChatJsonRes
 /** House style for anything the AI writes: no em or en dashes. */
 export function noDashes(text: string): string {
   return text
-    .replace(/\s*—\s*/g, ", ")
-    .replace(/\s–\s/g, ", ")
-    .replace(/–/g, "-")
+    .replace(/\s*\u2014\s*/g, ", ")
+    .replace(/\s\u2013\s/g, ", ")
+    .replace(/\u2013/g, "-")
 }
