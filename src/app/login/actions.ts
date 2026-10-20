@@ -1,5 +1,6 @@
 "use server"
 
+import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { z } from "zod"
 import { allowedEmail } from "@/lib/env"
@@ -25,7 +26,12 @@ export async function sendLink(_prev: LoginState, formData: FormData): Promise<L
   const supabase = await createClient()
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: { shouldCreateUser: true },
+    options: {
+      shouldCreateUser: true,
+      // Send the link straight to our confirm route on whichever URL you are using
+      // (production, preview or localhost). Must match Supabase's Redirect URLs list.
+      emailRedirectTo: `${await requestOrigin()}/auth/confirm`,
+    },
   })
   if (error) {
     return { step: "email", error: friendlyAuthError(error.message) }
@@ -55,6 +61,13 @@ export async function signOut() {
   const supabase = await createClient()
   await supabase.auth.signOut()
   redirect("/login")
+}
+
+async function requestOrigin(): Promise<string> {
+  const h = await headers()
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000"
+  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https")
+  return `${proto}://${host}`
 }
 
 function friendlyAuthError(message: string): string {

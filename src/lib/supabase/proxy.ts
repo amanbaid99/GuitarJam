@@ -12,6 +12,18 @@ const PUBLIC_PATHS = ["/login", "/auth"]
  * actions check the user again, and RLS guards the data itself.
  */
 export async function updateSession(request: NextRequest) {
+  // If Supabase sends a sign-in link to any page other than /auth/confirm
+  // (for example the Site URL root), pass it on to /auth/confirm.
+  const params = request.nextUrl.searchParams
+  if (
+    request.nextUrl.pathname !== "/auth/confirm" &&
+    (params.has("code") || params.has("token_hash"))
+  ) {
+    const url = request.nextUrl.clone()
+    url.pathname = "/auth/confirm"
+    return NextResponse.redirect(url)
+  }
+
   let response = NextResponse.next({ request })
 
   const supabase = createServerClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
