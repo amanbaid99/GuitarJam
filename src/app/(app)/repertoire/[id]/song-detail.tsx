@@ -1,11 +1,12 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useOptimistic, useState, useTransition } from "react"
 import { LyricsView } from "@/components/lyrics-view"
 import { SONG_STATUSES, type SongStatus } from "@/lib/domain"
 import { STATUS_LABEL, type Family, type Song } from "@/lib/songs"
-import { markVerified, saveLyrics, saveMyVersion, setSongStatus } from "../actions"
+import { deleteSong, markVerified, saveLyrics, saveMyVersion, setSongStatus } from "../actions"
 import { ChordTools } from "../chord-tools"
 import { SongEditForm } from "../song-edit-form"
 
@@ -125,6 +126,7 @@ export function SongDetail({ song, families }: Props) {
         </section>
       )}
 
+      {editing === "none" && <DeleteSong id={song.id} title={song.title} />}
 
       {error && (
         <p role="alert" className="text-sm text-danger">
@@ -189,6 +191,55 @@ function LyricsEditor({ song, onDone }: { song: Song; onDone: () => void }) {
           {pending ? "Saving..." : "Save lyrics"}
         </button>
       </div>
+    </section>
+  )
+}
+
+/** Two taps: "Delete song", then "Yes, delete". */
+function DeleteSong({ id, title }: { id: string; title: string }) {
+  const router = useRouter()
+  const [confirming, setConfirming] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [pending, startTransition] = useTransition()
+
+  if (!confirming) {
+    return (
+      <button type="button" onClick={() => setConfirming(true)} className="btn-ghost mt-4 text-danger">
+        Delete song
+      </button>
+    )
+  }
+
+  return (
+    <section className="card mt-4 flex flex-col gap-3 border-danger/40" aria-label="Delete song">
+      <p className="text-sm">
+        Delete <span className="font-semibold">{title}</span>? This removes its chords, lyrics and notes, and takes it
+        out of your sets. It cannot be undone.
+      </p>
+      <div className="grid grid-cols-2 gap-2">
+        <button type="button" disabled={pending} onClick={() => setConfirming(false)} className="btn-ghost">
+          Keep it
+        </button>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() =>
+            startTransition(async () => {
+              const res = await deleteSong(id)
+              if (res.ok) router.replace("/repertoire")
+              else setError(res.error)
+            })
+          }
+          className="btn-primary bg-danger text-white"
+        >
+          {pending ? "Deleting..." : "Yes, delete"}
+        </button>
+      </div>
+      {error && (
+        <p role="alert" className="text-sm text-danger">
+          {error}
+        </p>
+      )}
     </section>
   )
 }

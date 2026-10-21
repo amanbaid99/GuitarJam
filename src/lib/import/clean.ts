@@ -1,5 +1,5 @@
 import { noDashesPure } from "./text"
-import { findChords, suggestFamily } from "@/lib/theory"
+import { findChords, parseChord, suggestFamily } from "@/lib/theory"
 
 /** What the vision model returns for one song. */
 export type RawImportedSong = {
@@ -7,6 +7,8 @@ export type RawImportedSong = {
   artist: string | null
   chords: string | null
   key_capo: string | null
+  /** Chord names from a chord-diagram box in the image, if the AI saw one. */
+  chord_legend?: string[]
 }
 
 /** A song ready for the review screen. */
@@ -21,6 +23,25 @@ export type ImportedSong = {
   duplicate: boolean
   /** Lines were removed because they looked like lyrics. */
   lyricsRemoved: boolean
+  /** Set when the chords look wrong (see checkAgainstLegend). Shown as a warning. */
+  warning: string | null
+}
+
+/**
+ * Pages like Ultimate Guitar list every chord in a box at the top. If most of the
+ * chords the AI wrote are not in that box, it misread the page (or guessed).
+ */
+export function checkAgainstLegend(chords: string | null, legend: string[]): string | null {
+  if (!chords) return null
+  const used = [...new Set(findChords(chords).map((f) => f.text))]
+  if (used.length === 0) return null
+  const box = new Set(legend.map((c) => c.trim()).filter((c) => parseChord(c)))
+  if (box.size < 2) return null
+  const missing = used.filter((c) => !box.has(c))
+  if (missing.length / used.length > 0.3) {
+    return `These chords do not match the chord list in the image (${[...box].join(", ")}). The AI probably misread it: check carefully or type the song in.`
+  }
+  return null
 }
 
 const MAX_WORDS_WITHOUT_CHORDS = 5
@@ -86,6 +107,7 @@ export function cleanImported(
       family_id: chords ? (suggestFamily(chords, families)?.familyId ?? null) : null,
       duplicate: existing.has(norm(title)),
       lyricsRemoved: guarded.removed,
+      warning: checkAgainstLegend(chords, r.chord_legend ?? []),
     })
   }
   return out

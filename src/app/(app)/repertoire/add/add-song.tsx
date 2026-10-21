@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useMemo, useRef, useState, useTransition } from "react"
 import { DIFFICULTIES, SONG_STATUSES, STYLES, type SongStatus } from "@/lib/domain"
-import { downscaleImage } from "@/lib/image"
+import { prepareScreenshot } from "@/lib/image"
 import type { ImportedSong } from "@/lib/import/clean"
 import { DIFFICULTY_LABEL, HINT_MAX, STATUS_LABEL, STYLE_LABEL, type Family } from "@/lib/songs"
 import { createClient } from "@/lib/supabase/client"
@@ -219,18 +219,29 @@ function ScreenshotImport({ userId, families }: Props) {
     setPreview(URL.createObjectURL(file))
     try {
       setStage({ kind: "working", step: "Preparing image..." })
-      const blob = await downscaleImage(file)
+      const pieces = await prepareScreenshot(file)
 
-      setStage({ kind: "working", step: "Uploading..." })
-      const path = `${userId}/${Date.now()}.jpg`
       const supabase = createClient()
-      const { error: upErr } = await supabase.storage
-        .from("screenshots")
-        .upload(path, blob, { contentType: "image/jpeg", upsert: false })
-      if (upErr) throw new Error("Upload failed. Check your connection and try again.")
+      const stamp = Date.now()
+      const paths: string[] = []
+      for (const [i, blob] of pieces.entries()) {
+        setStage({
+          kind: "working",
+          step: pieces.length > 1 ? `Uploading ${i + 1} of ${pieces.length}...` : "Uploading...",
+        })
+        const path = `${userId}/${stamp}-${i}.jpg`
+        const { error: upErr } = await supabase.storage
+          .from("screenshots")
+          .upload(path, blob, { contentType: "image/jpeg", upsert: false })
+        if (upErr) {
+          if (paths.length) await supabase.storage.from("screenshots").remove(paths)
+          throw new Error("Upload failed. Check your connection and try again.")
+        }
+        paths.push(path)
+      }
 
       setStage({ kind: "working", step: "Reading the chords (this can take up to a minute)..." })
-      const res = await importScreenshot(path)
+      const res = await importScreenshot(paths)
       if (!res.ok) {
         setError(res.error)
         setStage({ kind: "pick" })
@@ -238,7 +249,7 @@ function ScreenshotImport({ userId, families }: Props) {
       }
       setStage({
         kind: "review",
-        songs: res.songs.map((s) => ({ ...s, include: !s.duplicate, status: "learning" })),
+        songs: res.songs.map((s) => ({ ...s, include: !s.duplicate && !s.warning, status: "learning" })),
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.")
@@ -315,6 +326,11 @@ function ScreenshotImport({ userId, families }: Props) {
               />
               <span className="font-medium">{s.include ? "Add this song" : "Skip this song"}</span>
             </label>
+            {s.warning && (
+              <p className="rounded-2xl bg-danger/15 px-3 py-2 text-sm text-danger" role="alert">
+                {s.warning}
+              </p>
+            )}
             <div className="flex flex-wrap gap-2 text-xs">
               {s.duplicate && <span className="rounded-full bg-danger/15 px-2 py-1 text-danger">Already in your library</span>}
               {s.lyricsRemoved && <span className="rounded-full bg-surface-2 px-2 py-1 text-muted">Lyrics left out</span>}

@@ -109,3 +109,26 @@ export async function saveLyrics(id: string, lyrics: string): Promise<ActionResu
   refresh()
   return { ok: true }
 }
+
+/** Deletes a song for good and takes it out of any set it was in. */
+export async function deleteSong(id: string): Promise<ActionResult> {
+  await requireUser()
+  if (!z.uuid().safeParse(id).success) return { ok: false, error: "Unknown song." }
+
+  const supabase = await createClient()
+  const { error, count } = await supabase.from("songs").delete({ count: "exact" }).eq("id", id)
+  if (error) return { ok: false, error: error.message }
+  if (!count) return { ok: false, error: "Song not found." }
+
+  // Sets keep an ordered list of song ids; drop this one from each.
+  const { data: sets } = await supabase.from("sets").select("id, song_ids").contains("song_ids", [id])
+  for (const set of sets ?? []) {
+    await supabase
+      .from("sets")
+      .update({ song_ids: set.song_ids.filter((s) => s !== id) })
+      .eq("id", set.id)
+  }
+
+  refresh()
+  return { ok: true }
+}

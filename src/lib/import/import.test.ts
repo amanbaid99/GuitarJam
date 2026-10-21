@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { cleanImported, stripLyrics } from "./clean"
+import { checkAgainstLegend, cleanImported, stripLyrics } from "./clean"
 import { extractSongs } from "./extract"
 
 const families = [
@@ -96,5 +96,51 @@ describe("extractSongs", () => {
     delete process.env.OPENROUTER_API_KEY
     const res = await extractSongs("data:image/jpeg;base64,AAAA", families, [])
     expect(res).toEqual({ ok: false, error: expect.stringMatching(/OPENROUTER_API_KEY/) })
+  })
+})
+
+describe("chord box check", () => {
+  const legend = ["Bm7", "Em7", "A7sus4", "D", "E7", "Gm11", "D/F#"]
+
+  it("warns when the chords do not match the chord box (the Daughters mix-up)", () => {
+    const wrong = "Intro: Cmaj7 G/B Am7 D7sus4\nChorus: Fmaj7 Cmaj7 G/B Am7"
+    expect(checkAgainstLegend(wrong, legend)).toMatch(/do not match the chord list/)
+  })
+
+  it("stays quiet when the chords match", () => {
+    expect(checkAgainstLegend("[Intro]\nBm7 Em7 A7sus4 D x2\nChorus:\nBm7 E7 A7sus4 D", legend)).toBeNull()
+  })
+
+  it("stays quiet when there is no chord box", () => {
+    expect(checkAgainstLegend("Cmaj7 G/B Am7", [])).toBeNull()
+  })
+
+  it("flags it on the imported song", () => {
+    const [song] = cleanImported(
+      [{ title: "Daughters", artist: "John Mayer", chords: "Cmaj7 G/B Am7 D7sus4", key_capo: null, chord_legend: legend }],
+      [],
+      [],
+    )
+    expect(song.warning).toMatch(/misread/)
+  })
+})
+
+describe("extractSongs with slices", () => {
+  beforeEach(() => {
+    process.env.OPENROUTER_API_KEY = "test-key"
+  })
+
+  it("sends every slice, in order, and says they are one screenshot", async () => {
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ songs: [{ title: "Daughters", artist: "John Mayer", chords: "Bm7 Em7 A7sus4 D", key_capo: null, chord_legend: ["Bm7", "Em7", "A7sus4", "D"] }] }) } }] })),
+    )
+    const res = await extractSongs(["data:image/jpeg;base64,A", "data:image/jpeg;base64,B", "data:image/jpeg;base64,C"], [], [], fetchImpl)
+    expect(res.ok && res.songs[0].warning).toBe(null)
+    const body = JSON.parse(String((fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1].body))
+    const parts = body.messages[1].content
+    expect(parts[0].text).toMatch(/3 images.*one long screenshot/)
+    expect(parts.slice(1).map((p: { image_url: { url: string } }) => p.image_url.url.slice(-1))).toEqual(["A", "B", "C"])
+    expect(body.temperature).toBe(0)
   })
 })
