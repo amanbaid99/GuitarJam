@@ -48,9 +48,23 @@ export async function importScreenshot(paths: string[]): Promise<ExtractResult> 
   }
 }
 
-const addSchema = z.array(songEditSchema.extend({ needs_verify: z.boolean().default(false) })).min(1).max(40)
+const addSchema = z
+  .array(
+    songEditSchema.extend({
+      needs_verify: z.boolean().default(false),
+      // Your own lyrics (typed or pasted), private to your account.
+      lyrics: z
+        .string()
+        .max(20000, "Lyrics are too long")
+        .transform((v) => (v.trim() === "" ? null : v))
+        .nullable()
+        .optional(),
+    }),
+  )
+  .min(1)
+  .max(40)
 export type NewSong = z.input<typeof addSchema>[number]
-export type AddResult = { ok: true; count: number } | { ok: false; error: string }
+export type AddResult = { ok: true; count: number; ids: string[] } | { ok: false; error: string }
 
 /** Adds one or more songs. AI-read songs come in with needs_verify = true. */
 export async function addSongs(input: NewSong[]): Promise<AddResult> {
@@ -69,9 +83,9 @@ export async function addSongs(input: NewSong[]): Promise<AddResult> {
     if ((data ?? []).length !== familyIds.length) return { ok: false, error: "Unknown family." }
   }
 
-  const { error } = await supabase.from("songs").insert(parsed.data)
+  const { data, error } = await supabase.from("songs").insert(parsed.data).select("id")
   if (error) return { ok: false, error: error.message }
 
   refresh()
-  return { ok: true, count: parsed.data.length }
+  return { ok: true, count: parsed.data.length, ids: (data ?? []).map((r) => r.id) }
 }

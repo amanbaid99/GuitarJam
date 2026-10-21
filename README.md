@@ -17,7 +17,8 @@ Stack: Next.js 16 (App Router, Cache Components) + TypeScript + Tailwind 4, Supa
 - [x] Step 5: Today screen (week summary, timed session plan, metronome, one-tap session log)
 - [x] Step 6: AI practice coach via OpenRouter (free NVIDIA Nemotron), validated, falls back to the built-in plan
 - [x] Step 7: Sets (AI set builder with built-in fallback, drag to reorder, Go-to set, play in performance mode)
-- [x] Step 8: Add song (manual, or screenshot import via Nemotron vision; lyrics guard; family suggested by the theory engine; review before saving)
+- [x] Step 8: Add song: Paste chords (read by the app, no AI, chords placed over the words), screenshot import for song lists (AI, long pages sliced, checked against the page's chord list), or type it in
+- [x] Delete song (song page, also removes it from sets)
 - [x] Song page: your lyrics with chords above the words, Save as my version, practice history
 - [x] Songs: Show and Sort dropdowns (A to Z by default; family, key, least played, difficulty)
 - [x] Invite only: Request access on sign-in, owner approves in Settings > Members
@@ -96,7 +97,7 @@ fails, the app uses its built-in plan or set builder. Settings > Test AI connect
 
 ## Rules
 
-- Lyrics come only from what you type into a song's Lyrics box (chords inline as `[G]word`).
-  They are private to your account and never sent to the AI. Screenshot import still strips lyrics.
+- Lyrics come only from what you type or paste yourself (chords inline as `[G]word`).
+  Pasted chord sheets can keep their words too. They are private to your account and never sent to the AI. Screenshot import still strips lyrics.
 - No em dashes in UI copy or AI output.
 - The AI is never trusted for theory or transposition (step 3 adds a tested module for that).

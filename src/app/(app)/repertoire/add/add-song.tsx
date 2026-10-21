@@ -5,23 +5,26 @@ import { useRouter } from "next/navigation"
 import { useMemo, useRef, useState, useTransition } from "react"
 import { DIFFICULTIES, SONG_STATUSES, STYLES, type SongStatus } from "@/lib/domain"
 import { prepareScreenshot } from "@/lib/image"
+import { LyricsView } from "@/components/lyrics-view"
 import type { ImportedSong } from "@/lib/import/clean"
+import { parsePastedSheet, type PastedSong } from "@/lib/import/paste"
 import { DIFFICULTY_LABEL, HINT_MAX, STATUS_LABEL, STYLE_LABEL, type Family } from "@/lib/songs"
 import { createClient } from "@/lib/supabase/client"
 import { suggestFamily } from "@/lib/theory"
 import { addSongs, importScreenshot } from "./actions"
 
 type Props = { userId: string; families: Family[] }
-type Tab = "manual" | "screenshot"
+type Tab = "paste" | "screenshot" | "manual"
 
 export function AddSong({ userId, families }: Props) {
-  const [tab, setTab] = useState<Tab>("screenshot")
+  const [tab, setTab] = useState<Tab>("paste")
   return (
     <div className="flex flex-col gap-4">
-      <div role="tablist" aria-label="How to add" className="grid grid-cols-2 gap-1 rounded-2xl bg-surface p-1">
+      <div role="tablist" aria-label="How to add" className="grid grid-cols-3 gap-1 rounded-2xl bg-surface p-1">
         {(
           [
-            ["screenshot", "From a screenshot"],
+            ["paste", "Paste chords"],
+            ["screenshot", "Screenshot"],
             ["manual", "Type it in"],
           ] as const
         ).map(([id, label]) => (
@@ -39,7 +42,13 @@ export function AddSong({ userId, families }: Props) {
           </button>
         ))}
       </div>
-      {tab === "manual" ? <ManualForm families={families} /> : <ScreenshotImport userId={userId} families={families} />}
+      {tab === "paste" ? (
+        <PasteImport families={families} />
+      ) : tab === "manual" ? (
+        <ManualForm families={families} />
+      ) : (
+        <ScreenshotImport userId={userId} families={families} />
+      )}
     </div>
   )
 }
@@ -401,7 +410,8 @@ function ScreenshotImport({ userId, families }: Props) {
   return (
     <div className="card flex flex-col gap-4">
       <p className="text-muted">
-        A photo or screenshot of a chord chart. Tables with many songs work too. Only chords are kept, never lyrics.
+        Best for a list of songs, like a screenshot of your notes app. The AI reads it, so check what it finds. For a
+        full chord sheet from a website, use Paste chords instead: it is exact.
       </p>
       {preview && (
         // eslint-disable-next-line @next/next/no-img-element -- local preview of the picked file
@@ -428,6 +438,172 @@ function ScreenshotImport({ userId, families }: Props) {
           {error}
         </p>
       )}
+    </div>
+  )
+}
+
+/**
+ * Paste a chord sheet copied from a chord site. Read by the app itself (no AI),
+ * so chords come out exactly as written, lined up over the words.
+ */
+function PasteImport({ families }: { families: Family[] }) {
+  const router = useRouter()
+  const [text, setText] = useState("")
+  const [song, setSong] = useState<PastedSong | null>(null)
+  const [status, setStatus] = useState<SongStatus>("learning")
+  const [familyId, setFamilyId] = useState("")
+  const [keepLyrics, setKeepLyrics] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [pending, startTransition] = useTransition()
+
+  function read() {
+    setError(null)
+    const parsed = parsePastedSheet(text)
+    if (parsed.chordNames.length === 0) {
+      setError("No chords found. Copy the lines with the chords on them too, not just the words.")
+      return
+    }
+    setSong(parsed)
+    setFamilyId(parsed.chords ? (suggestFamily(parsed.chords, families)?.familyId ?? "") : "")
+    setKeepLyrics(parsed.lyricLines > 0)
+  }
+
+  function edit(patch: Partial<PastedSong>) {
+    setSong((s) => (s ? { ...s, ...patch } : s))
+  }
+
+  function save(s: PastedSong) {
+    setError(null)
+    startTransition(async () => {
+      const res = await addSongs([
+        {
+          title: s.title,
+          artist: s.artist ?? "",
+          status,
+          difficulty: "",
+          style: "",
+          family_id: familyId,
+          key_capo: s.key_capo ?? "",
+          chords: s.chords ?? "",
+          first_line_hint: "",
+          tab_link: "",
+          notes: "",
+          lyrics: keepLyrics ? (s.lyrics ?? "") : "",
+          needs_verify: false, // read by the app, not the AI
+        },
+      ])
+      if (!res.ok) setError(res.error)
+      else router.push(res.ids[0] ? `/repertoire/${res.ids[0]}` : "/repertoire")
+    })
+  }
+
+  if (!song) {
+    return (
+      <div className="card flex flex-col gap-4">
+        <div className="flex flex-col gap-1 text-sm text-muted">
+          <p>On Ultimate Guitar or any chord site, select the song from the title down to the last chord, copy, and paste it here.</p>
+          <p>The app reads it itself (no AI), so the chords come out exactly as written, above the right words.</p>
+        </div>
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={10}
+          placeholder={"[Verse 1]\nG                Cadd9\nI know a girl..."}
+          aria-label="Pasted chord sheet"
+          className="field min-h-56 py-3 font-mono text-sm"
+        />
+        <button type="button" onClick={read} disabled={!text.trim()} className="btn-primary">
+          Read it
+        </button>
+        {error && (
+          <p role="alert" className="text-sm text-danger">
+            {error}
+          </p>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-sm text-muted">
+        Found {song.chordNames.length} chord{song.chordNames.length === 1 ? "" : "s"}: {song.chordNames.join(", ")}
+        {song.lyricLines > 0 ? `. ${song.lyricLines} lines of words.` : "."}
+      </p>
+      <section className="card flex flex-col gap-3">
+        <Field label="Title">
+          <input value={song.title} onChange={(e) => edit({ title: e.target.value })} required maxLength={200} className="field" />
+        </Field>
+        <Field label="Artist">
+          <input value={song.artist ?? ""} onChange={(e) => edit({ artist: e.target.value })} maxLength={200} className="field" />
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Key / capo">
+            <input
+              value={song.key_capo ?? ""}
+              onChange={(e) => edit({ key_capo: e.target.value })}
+              placeholder="Capo 3"
+              maxLength={100}
+              className="field"
+            />
+          </Field>
+          <Field label="Status">
+            <select value={status} onChange={(e) => setStatus(e.target.value as SongStatus)} className="field">
+              {SONG_STATUSES.map((st) => (
+                <option key={st} value={st}>
+                  {STATUS_LABEL[st]}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+        <FamilyPicker families={families} chords={song.chords ?? ""} value={familyId} onChange={setFamilyId} />
+        <Field label="Chords by section">
+          <textarea
+            value={song.chords ?? ""}
+            onChange={(e) => edit({ chords: e.target.value })}
+            rows={4}
+            maxLength={4000}
+            className="field min-h-28 py-3 font-mono text-base"
+          />
+        </Field>
+      </section>
+
+      {song.lyrics && (
+        <section className="card flex flex-col gap-3" aria-label="Lyrics preview">
+          <label className="flex min-h-11 items-center gap-3">
+            <input
+              type="checkbox"
+              checked={keepLyrics}
+              onChange={(e) => setKeepLyrics(e.target.checked)}
+              className="h-6 w-6 accent-[var(--accent)]"
+            />
+            <span className="font-medium">Keep the words with chords above them</span>
+          </label>
+          {keepLyrics && (
+            <>
+              <p className="text-xs text-muted">Private to your account. You can edit them later on the song page.</p>
+              <div className="max-h-96 overflow-y-auto rounded-2xl bg-surface-2 p-3">
+                <LyricsView text={song.lyrics} />
+              </div>
+            </>
+          )}
+        </section>
+      )}
+
+      {error && (
+        <p role="alert" className="text-sm text-danger">
+          {error}
+        </p>
+      )}
+      <div className="grid grid-cols-2 gap-2">
+        <button type="button" onClick={() => setSong(null)} disabled={pending} className="btn-ghost">
+          Back to the text
+        </button>
+        <button type="button" onClick={() => save(song)} disabled={pending || !song.title.trim()} className="btn-primary">
+          {pending ? "Saving..." : "Save song"}
+        </button>
+      </div>
     </div>
   )
 }
