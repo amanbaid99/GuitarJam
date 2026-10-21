@@ -1,7 +1,5 @@
 import { Suspense } from "react"
-import { requireUser } from "@/lib/auth"
-import { loadSetSongs } from "@/lib/sets/load"
-import { createClient } from "@/lib/supabase/server"
+import { getSetsData } from "@/lib/data"
 import { SetsView } from "./sets-view"
 
 export const metadata = { title: "Sets" }
@@ -21,18 +19,13 @@ export default function SetsPage() {
 }
 
 async function Sets() {
-  await requireUser()
-  const supabase = await createClient()
-  const [sets, songs] = await Promise.all([
-    supabase.from("sets").select("id, name, room, notes, song_ids").order("created_at", { ascending: false }),
-    loadSetSongs(),
-  ])
-  if (sets.error) {
+  const data = await getSetsData()
+  if (!data.ok) {
     return (
       <p className="card text-danger" role="alert">
-        Could not load your sets: {sets.error.message}
+        Could not load your sets: {data.error}
       </p>
     )
   }
-  return <SetsView sets={sets.data ?? []} songs={songs} />
+  return <SetsView sets={data.sets} songs={data.songs} />
 }

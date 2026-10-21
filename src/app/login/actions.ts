@@ -1,5 +1,6 @@
 "use server"
 
+import { refresh } from "next/cache"
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { z } from "zod"
@@ -60,6 +61,7 @@ export async function verifyCode(_prev: LoginState, formData: FormData): Promise
 export async function signOut() {
   const supabase = await createClient()
   await supabase.auth.signOut()
+  refresh() // clear this device's cached tabs before the next person signs in
   redirect("/login")
 }
 

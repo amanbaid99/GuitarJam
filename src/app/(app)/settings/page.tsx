@@ -1,7 +1,6 @@
 import { Suspense } from "react"
 import { signOut } from "@/app/login/actions"
-import { requireUser } from "@/lib/auth"
-import { createClient } from "@/lib/supabase/server"
+import { getAccount } from "@/lib/data"
 import { AiCheck } from "./ai-check"
 import { Members } from "./members"
 import { ThemePicker } from "./theme-picker"
@@ -31,16 +30,13 @@ export default function SettingsPage() {
 
 /** Only the owner sees this. */
 async function MembersSection() {
-  const user = await requireUser()
-  if (user.role !== "owner") return null
-  const supabase = await createClient()
-  const [requests, members] = await Promise.all([supabase.rpc("owner_requests"), supabase.rpc("owner_members")])
-  const ready = !requests.error && !members.error
-  return <Members ready={ready} requests={requests.data ?? []} members={members.data ?? []} />
+  const { members } = await getAccount()
+  if (!members) return null
+  return <Members ready={members.ready} requests={members.requests} members={members.members} />
 }
 
 async function Account() {
-  const user = await requireUser()
+  const user = await getAccount()
   return (
     <section className="flex flex-col gap-3" aria-label="Account">
       <h2 className="text-lg font-semibold">Account</h2>

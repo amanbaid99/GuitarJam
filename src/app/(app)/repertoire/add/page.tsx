@@ -1,6 +1,5 @@
 import { Suspense } from "react"
-import { requireUser } from "@/lib/auth"
-import { createClient } from "@/lib/supabase/server"
+import { getAddSongData } from "@/lib/data"
 import { AddSong } from "./add-song"
 
 export const metadata = { title: "Add song" }
@@ -20,8 +19,6 @@ export default function AddSongPage() {
 }
 
 async function Content() {
-  const user = await requireUser()
-  const supabase = await createClient()
-  const { data: families } = await supabase.from("families").select("*").order("created_at").order("name")
-  return <AddSong userId={user.id} families={families ?? []} />
+  const { userId, families } = await getAddSongData()
+  return <AddSong userId={userId} families={families} />
 }

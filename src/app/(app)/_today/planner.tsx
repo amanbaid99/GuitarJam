@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useTransition } from "react"
+import { todayISO } from "@/lib/dates"
 import { createLocalStore } from "@/lib/local-store"
 import { PLAN_MINUTES, planSchema, planTotal, type Plan, type PlanMinutes } from "@/lib/plan/types"
 import { useWakeLock } from "@/lib/use-wake-lock"
@@ -20,15 +21,17 @@ const planStore = createLocalStore<Saved | null>(
   null,
 )
 
+/** Today on this phone's own clock. */
+const localToday = () => todayISO(new Date(), Intl.DateTimeFormat().resolvedOptions().timeZone)
+
 type Props = {
-  today: string
   songs: PlanSong[]
   chordsById: Record<string, string | null>
 }
 
-export function Planner({ today, songs, chordsById }: Props) {
+export function Planner({ songs, chordsById }: Props) {
   const saved = planStore.useValue()
-  const plan = saved?.date === today ? saved.plan : null
+  const plan = saved && saved.date === localToday() ? saved.plan : null
   const [minutes, setMinutes] = useState<PlanMinutes>(20)
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
@@ -37,7 +40,7 @@ export function Planner({ today, songs, chordsById }: Props) {
     setError(null)
     startTransition(async () => {
       const res = await planSession(minutes)
-      if (res.ok) planStore.set({ date: today, plan: res.plan, source: res.source, note: res.note })
+      if (res.ok) planStore.set({ date: localToday(), plan: res.plan, source: res.source, note: res.note })
       else setError(res.error)
     })
   }

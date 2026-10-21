@@ -1,7 +1,6 @@
 import Link from "next/link"
 import { Suspense } from "react"
-import { requireUser } from "@/lib/auth"
-import { createClient } from "@/lib/supabase/server"
+import { getLibrary } from "@/lib/data"
 import { SeedButton } from "../seed-button"
 import { RepertoireView } from "./repertoire-view"
 
@@ -19,27 +18,20 @@ export default function RepertoirePage() {
 }
 
 async function Repertoire() {
-  const user = await requireUser()
-  const supabase = await createClient()
-  const [families, songs] = await Promise.all([
-    supabase.from("families").select("*").order("created_at").order("name"),
-    supabase.from("songs").select("*").order("title"),
-  ])
-
-  const error = families.error ?? songs.error
-  if (error) {
+  const lib = await getLibrary()
+  if (!lib.ok) {
     return (
       <p className="card text-danger" role="alert">
-        Could not load your songs: {error.message}
+        Could not load your songs: {lib.error}
       </p>
     )
   }
 
-  if ((songs.data ?? []).length === 0) {
-    return <Starter isOwner={user.role === "owner"} hasFamilies={(families.data ?? []).length > 0} />
+  if (lib.songs.length === 0) {
+    return <Starter isOwner={lib.role === "owner"} hasFamilies={lib.families.length > 0} />
   }
 
-  return <RepertoireView families={families.data ?? []} songs={songs.data ?? []} />
+  return <RepertoireView families={lib.families} songs={lib.songs} />
 }
 
 function ListSkeleton() {

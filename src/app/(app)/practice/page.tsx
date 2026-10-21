@@ -1,8 +1,6 @@
 import Link from "next/link"
 import { Suspense } from "react"
-import { requireUser } from "@/lib/auth"
-import { todayISO } from "@/lib/dates"
-import { createClient } from "@/lib/supabase/server"
+import { getPracticeSongs } from "@/lib/data"
 import { Planner } from "../_today/planner"
 
 export const metadata = { title: "Practice" }
@@ -22,17 +20,16 @@ export default function PracticePage() {
 }
 
 async function Content() {
-  await requireUser()
-  const supabase = await createClient()
-  const { data: songs, error } = await supabase.from("songs").select("id, title, chords").order("title")
-  if (error) {
+  const res = await getPracticeSongs()
+  if (!res.ok) {
     return (
       <p className="card text-danger" role="alert">
-        Could not load your songs: {error.message}
+        Could not load your songs: {res.error}
       </p>
     )
   }
-  if (!songs?.length) {
+  const songs = res.songs
+  if (!songs.length) {
     return (
       <section className="card flex flex-col gap-3">
         <h2 className="text-xl font-semibold">No songs yet</h2>
@@ -45,7 +42,6 @@ async function Content() {
   }
   return (
     <Planner
-      today={todayISO()}
       songs={songs.map((s) => ({ id: s.id, title: s.title }))}
       chordsById={Object.fromEntries(songs.map((s) => [s.id, s.chords]))}
     />
