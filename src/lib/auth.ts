@@ -1,5 +1,6 @@
 import "server-only"
 import { redirect } from "next/navigation"
+import { cache } from "react"
 import { roleOf, type Role } from "@/lib/access"
 import { createClient } from "@/lib/supabase/server"
 
@@ -11,7 +12,7 @@ export type CurrentUser = { id: string; email: string; role: Role }
  * redirects to /login?error=access. Call it in every page and action that
  * touches data; proxy.ts is only a first check, and RLS guards the data.
  */
-export async function requireUser(): Promise<CurrentUser> {
+export const requireUser = cache(async (): Promise<CurrentUser> => {
   const supabase = await createClient()
   const { data, error } = await supabase.auth.getClaims()
   const claims = data?.claims
@@ -20,7 +21,8 @@ export async function requireUser(): Promise<CurrentUser> {
   const role = await roleOf(supabase, email)
   if (!role) redirect("/login?error=access")
   return { id: claims.sub, email, role }
-}
+})
+// cache(): one check per request, however many parts of the page ask.
 
 /** Like requireUser, but only for the app's owner. */
 export async function requireOwner(): Promise<CurrentUser> {

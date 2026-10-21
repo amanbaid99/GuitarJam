@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useState } from "react"
 
 const TABS = [
   { href: "/repertoire", label: "Songs", icon: "M9 18V5l12-2v13M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm12-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" },
@@ -25,12 +26,24 @@ function activeHref(pathname: string | null): string | null {
 
 /** Highlights the current tab. Reads the URL, so it sits inside <Suspense>. */
 export function BottomNav() {
-  return <NavBar pathname={usePathname()} />
+  const pathname = usePathname()
+  // The tab you tapped lights up at once, before its page has loaded.
+  const [tapped, setTapped] = useState<{ href: string; from: string } | null>(null)
+  const pending = tapped && tapped.from === pathname ? tapped.href : null
+  return <NavBar pathname={pathname} pendingHref={pending} onTap={(href) => setTapped({ href, from: pathname })} />
 }
 
 /** The bar itself. With no pathname (while loading) no tab is highlighted. */
-export function NavBar({ pathname }: { pathname: string | null }) {
-  const current = activeHref(pathname)
+export function NavBar({
+  pathname,
+  pendingHref = null,
+  onTap,
+}: {
+  pathname: string | null
+  pendingHref?: string | null
+  onTap?: (href: string) => void
+}) {
+  const current = pendingHref ?? activeHref(pathname)
   return (
     <nav
       aria-label="Main"
@@ -45,8 +58,9 @@ export function NavBar({ pathname }: { pathname: string | null }) {
             <li key={tab.href}>
               <Link
                 href={tab.href}
+                onClick={() => onTap?.(tab.href)}
                 aria-current={active ? "page" : undefined}
-                className={`flex min-h-16 flex-col items-center justify-center gap-1 text-[11px] font-medium ${
+                className={`flex min-h-16 touch-manipulation flex-col items-center justify-center gap-1 text-[11px] font-medium select-none ${
                   active ? "text-accent" : "text-muted"
                 }`}
               >
