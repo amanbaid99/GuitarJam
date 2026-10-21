@@ -8,7 +8,10 @@ const BUILT_AT = new Date().toISOString()
 const nextConfig: NextConfig = {
   // Songs is the home screen.
   async redirects() {
-    return [{ source: "/", destination: "/repertoire", permanent: false }]
+    return [
+      { source: "/", destination: "/repertoire", permanent: false },
+      { source: "/today", destination: "/practice", permanent: false },
+    ]
   },
   env: {
     APP_VERSION,

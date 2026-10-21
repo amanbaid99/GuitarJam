@@ -21,16 +21,16 @@ import {
 } from "@/lib/songs"
 import { SongCard } from "./song-card"
 
-type Props = { families: Family[]; songs: Song[]; today: string }
+type Props = { families: Family[]; songs: Song[] }
 
-// Your last sort, remembered on this device.
+// Your last sort, remembered on this device. A to Z unless you pick another.
 const sortStore = createLocalStore<SortMode>(
-  "myjamm-song-sort",
+  "myjamm-song-sort-v2",
   (raw) => (SORT_MODES.includes(raw as SortMode) ? (raw as SortMode) : null),
-  "family",
+  "az",
 )
 
-export function RepertoireView({ families, songs, today }: Props) {
+export function RepertoireView({ families, songs }: Props) {
   const [filters, setFilters] = useState<SongFilters>(NO_FILTERS)
   const [open, setOpen] = useState<Record<string, boolean>>({})
   const [moreFilters, setMoreFilters] = useState(false)
@@ -85,43 +85,39 @@ export function RepertoireView({ families, songs, today }: Props) {
           aria-label="Search songs"
           className="field"
         />
-        <ChipRow
-          label="Status"
-          value={filters.status}
-          options={[["known", "Songs I know"], ...SONG_STATUSES.map((s) => [s, STATUS_LABEL[s]] as [typeof s, string])]}
-          onChange={(v) => set("status", v)}
-        />
-        <div role="group" aria-label="Sort" className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1">
-          <span className="shrink-0 text-sm text-muted">Sort</span>
-          {SORT_MODES.map((m) => (
-            <button
-              key={m}
-              type="button"
-              aria-pressed={m === sort}
-              onClick={() => sortStore.set(m)}
-              className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-medium ${
-                m === sort ? "border-fg bg-fg text-bg" : "border-border"
-              }`}
-            >
-              {SORT_LABEL[m]}
-            </button>
-          ))}
+        <div className="grid grid-cols-2 gap-2">
+          <Dropdown
+            label="Show"
+            value={filters.status}
+            onChange={(v) => set("status", v as SongFilters["status"])}
+            options={[
+              ["all", "All songs"],
+              ["known", "Songs I know"],
+              ...SONG_STATUSES.map((s) => [s, STATUS_LABEL[s]] as [string, string]),
+            ]}
+          />
+          <Dropdown
+            label="Sort"
+            value={sort}
+            onChange={(v) => sortStore.set(v as SortMode)}
+            options={SORT_MODES.map((m) => [m, SORT_LABEL[m]] as [string, string])}
+          />
         </div>
         {moreFilters && (
-          <>
-            <ChipRow
+          <div className="grid grid-cols-2 gap-2">
+            <Dropdown
               label="Difficulty"
               value={filters.difficulty}
-              options={DIFFICULTIES.map((d) => [d, DIFFICULTY_LABEL[d]])}
-              onChange={(v) => set("difficulty", v)}
+              onChange={(v) => set("difficulty", v as SongFilters["difficulty"])}
+              options={[["all", "Any"], ...DIFFICULTIES.map((d) => [d, DIFFICULTY_LABEL[d]] as [string, string])]}
             />
-            <ChipRow
+            <Dropdown
               label="Style"
               value={filters.style}
-              options={STYLES.map((s) => [s, STYLE_LABEL[s]])}
-              onChange={(v) => set("style", v)}
+              onChange={(v) => set("style", v as SongFilters["style"])}
+              options={[["all", "Any"], ...STYLES.map((st) => [st, STYLE_LABEL[st]] as [string, string])]}
             />
-          </>
+          </div>
         )}
         <div className="flex items-center justify-between text-sm text-muted">
           <span>
@@ -154,7 +150,7 @@ export function RepertoireView({ families, songs, today }: Props) {
             <ul className="flex flex-col gap-2">
               {group.songs.map((song) => (
                 <li key={song.id}>
-                  <SongCard song={song} today={today} />
+                  <SongCard song={song} />
                 </li>
               ))}
             </ul>
@@ -201,7 +197,7 @@ export function RepertoireView({ families, songs, today }: Props) {
               <ul className="flex flex-col gap-2">
                 {group.songs.map((song) => (
                   <li key={song.id}>
-                    <SongCard song={song} today={today} />
+                    <SongCard song={song} />
                   </li>
                 ))}
               </ul>
@@ -213,37 +209,43 @@ export function RepertoireView({ families, songs, today }: Props) {
   )
 }
 
-function ChipRow<T extends string>({
+/** A labelled native dropdown: big tap target, phone-native picker. */
+function Dropdown({
   label,
   value,
   options,
   onChange,
 }: {
   label: string
-  value: T | "all"
-  options: [T, string][]
-  onChange: (v: T | "all") => void
+  value: string
+  options: [string, string][]
+  onChange: (v: string) => void
 }) {
-  const all: [T | "all", string][] = [["all", "All"], ...options]
   return (
-    <div role="group" aria-label={label} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-      {all.map(([v, text]) => {
-        const active = v === value
-        return (
-          <button
-            key={v}
-            type="button"
-            aria-pressed={active}
-            onClick={() => onChange(v)}
-            className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-medium transition ${
-              active ? "border-accent bg-accent text-accent-fg" : "border-border text-fg"
-            }`}
-          >
-            {v === "all" ? `${label}: All` : text}
-          </button>
-        )
-      })}
-    </div>
+    <label className="relative flex flex-col">
+      <span className="pointer-events-none absolute top-1.5 left-4 text-[11px] font-medium text-muted">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="min-h-14 w-full appearance-none rounded-2xl border border-border bg-surface pt-5 pr-10 pl-4 text-base font-medium text-fg outline-none focus:border-accent"
+      >
+        {options.map(([v, text]) => (
+          <option key={v} value={v}>
+            {text}
+          </option>
+        ))}
+      </select>
+      <svg
+        viewBox="0 0 24 24"
+        className="pointer-events-none absolute top-1/2 right-3 h-5 w-5 -translate-y-1/2 text-muted"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        aria-hidden="true"
+      >
+        <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </label>
   )
 }
 

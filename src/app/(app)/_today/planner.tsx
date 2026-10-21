@@ -5,7 +5,8 @@ import { createLocalStore } from "@/lib/local-store"
 import { PLAN_MINUTES, planSchema, planTotal, type Plan, type PlanMinutes } from "@/lib/plan/types"
 import { useWakeLock } from "@/lib/use-wake-lock"
 import { planSession } from "./actions"
-import { LogSession, type LogSong } from "./log-session"
+
+type PlanSong = { id: string; title: string }
 
 type Saved = { date: string; plan: Plan; source?: "ai" | "template"; note?: string }
 
@@ -21,18 +22,16 @@ const planStore = createLocalStore<Saved | null>(
 
 type Props = {
   today: string
-  focusSkill: string | null
-  songs: LogSong[]
+  songs: PlanSong[]
   chordsById: Record<string, string | null>
 }
 
-export function Planner({ today, focusSkill, songs, chordsById }: Props) {
+export function Planner({ today, songs, chordsById }: Props) {
   const saved = planStore.useValue()
   const plan = saved?.date === today ? saved.plan : null
   const [minutes, setMinutes] = useState<PlanMinutes>(20)
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
-  const [logging, setLogging] = useState(false)
 
   function makePlan() {
     setError(null)
@@ -42,8 +41,6 @@ export function Planner({ today, focusSkill, songs, chordsById }: Props) {
       else setError(res.error)
     })
   }
-
-  const planSongIds = plan ? [...new Set(plan.blocks.flatMap((b) => (b.song_id ? [b.song_id] : [])))] : []
 
   return (
     <section className="card flex flex-col gap-4" aria-label="Practice plan">
@@ -86,30 +83,8 @@ export function Planner({ today, focusSkill, songs, chordsById }: Props) {
           note={saved?.note}
           songs={songs}
           chordsById={chordsById}
-          onLog={() => setLogging(true)}
           onClear={() => planStore.set(null)}
         />
-      )}
-
-      {logging ? (
-        <LogSession
-          songs={songs}
-          defaults={{
-            minutes: plan ? planTotal(plan) : 20,
-            focus: focusSkill ?? "",
-            songIds: planSongIds,
-          }}
-          onDone={(saved) => {
-            setLogging(false)
-            if (saved) planStore.set(null)
-          }}
-        />
-      ) : (
-        !plan && (
-          <button type="button" onClick={() => setLogging(true)} className="btn-ghost">
-            Log a session without a plan
-          </button>
-        )
       )}
     </section>
   )
@@ -127,15 +102,13 @@ function PlanRunner({
   note,
   songs,
   chordsById,
-  onLog,
   onClear,
 }: {
   plan: Plan
   source?: "ai" | "template"
   note?: string
-  songs: LogSong[]
+  songs: PlanSong[]
   chordsById: Record<string, string | null>
-  onLog: () => void
   onClear: () => void
 }) {
   const [run, setRun] = useState<RunState>({ status: "idle", index: 0 })
@@ -252,9 +225,9 @@ function PlanRunner({
       {run.status === "done" ? (
         <div className="flex flex-col gap-3 rounded-2xl bg-bg p-4 text-center">
           <p className="text-2xl font-bold">Nice work.</p>
-          <p className="text-muted">Log it so your week adds up.</p>
-          <button type="button" onClick={onLog} className="btn-primary">
-            Log session
+          <p className="text-muted">That is your practice done for today.</p>
+          <button type="button" onClick={onClear} className="btn-primary">
+            Plan another
           </button>
         </div>
       ) : (
@@ -290,11 +263,6 @@ function PlanRunner({
       )}
 
       <div className="flex gap-2">
-        {run.status !== "done" && (
-          <button type="button" onClick={onLog} className="btn-ghost flex-1 text-sm">
-            Log session
-          </button>
-        )}
         <button type="button" onClick={onClear} className="btn-ghost flex-1 text-sm">
           New plan
         </button>

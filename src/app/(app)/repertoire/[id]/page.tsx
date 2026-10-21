@@ -2,9 +2,8 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { Suspense } from "react"
 import { requireUser } from "@/lib/auth"
-import { todayISO } from "@/lib/dates"
 import { createClient } from "@/lib/supabase/server"
-import { SongDetail, type Played } from "./song-detail"
+import { SongDetail } from "./song-detail"
 
 export const metadata = { title: "Song" }
 
@@ -31,16 +30,11 @@ async function Song({ params }: { params: PageProps<"/repertoire/[id]">["params"
   const { id } = await params
   await requireUser()
   const supabase = await createClient()
-  const [song, families, history] = await Promise.all([
+  const [song, families] = await Promise.all([
     supabase.from("songs").select("*").eq("id", id).maybeSingle(),
     supabase.from("families").select("*").order("created_at").order("name"),
-    supabase.from("session_songs").select("sessions(date, minutes, how_it_went)").eq("song_id", id),
   ])
   if (song.error || !song.data) notFound()
 
-  const played: Played[] = (history.data ?? [])
-    .flatMap((row) => (row.sessions ? [row.sessions as unknown as Played] : []))
-    .sort((a, b) => (a.date < b.date ? 1 : -1))
-
-  return <SongDetail song={song.data} families={families.data ?? []} history={played} today={todayISO()} />
+  return <SongDetail song={song.data} families={families.data ?? []} />
 }

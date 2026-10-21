@@ -19,9 +19,9 @@ Stack: Next.js 16 (App Router, Cache Components) + TypeScript + Tailwind 4, Supa
 - [x] Step 7: Sets (AI set builder with built-in fallback, drag to reorder, Go-to set, play in performance mode)
 - [x] Step 8: Add song (manual, or screenshot import via Nemotron vision; lyrics guard; family suggested by the theory engine; review before saving)
 - [x] Song page: your lyrics with chords above the words, Save as my version, practice history
-- [x] Songs: Songs I know filter; sort by family, A to Z, key, least played, difficulty
+- [x] Songs: Show and Sort dropdowns (A to Z by default; family, key, least played, difficulty)
 - [x] Invite only: Request access on sign-in, owner approves in Settings > Members
-- [x] Songs is the home screen; tabs are Songs, Sets, Today. Progress screen dropped
+- [x] Songs is the home screen; tabs are Songs, Sets, Add, Practice, Metronome, Settings. Progress and session logging hidden for now
 - [ ] Step 10: installable app, icons, polish
 
 ## Run locally

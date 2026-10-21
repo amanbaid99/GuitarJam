@@ -1,6 +1,6 @@
 import Link from "next/link"
 import type { SongStatus } from "@/lib/domain"
-import { DIFFICULTY_LABEL, STATUS_LABEL, STYLE_LABEL, lastPractisedLabel, type Song } from "@/lib/songs"
+import { DIFFICULTY_LABEL, STATUS_LABEL, STYLE_LABEL, type Song } from "@/lib/songs"
 
 export const STATUS_TONE: Record<SongStatus, string> = {
   want_to_learn: "bg-surface-2 text-muted",
@@ -11,13 +11,12 @@ export const STATUS_TONE: Record<SongStatus, string> = {
 
 type Props = {
   song: Song
-  today: string
   /** Extra line under the title, e.g. the key when sorting by key. */
   detail?: string | null
 }
 
 /** One song in the list. Tap to open its page. */
-export function SongCard({ song, today, detail }: Props) {
+export function SongCard({ song, detail }: Props) {
   const status = song.status as SongStatus
   const meta = [
     song.difficulty && DIFFICULTY_LABEL[song.difficulty as keyof typeof DIFFICULTY_LABEL],
@@ -31,9 +30,7 @@ export function SongCard({ song, today, detail }: Props) {
         <h3 className="text-lg leading-snug font-semibold">{song.title}</h3>
         {song.artist && <p className="truncate text-sm text-muted">{song.artist}</p>}
         <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
-          {[detail ?? meta.join(" · "), song.last_practised ? `played ${lastPractisedLabel(song.last_practised, today).toLowerCase()}` : "not played yet"]
-            .filter(Boolean)
-            .join(" · ")}
+          {detail ?? meta.join(" · ")}
           {song.lyrics && <span>· lyrics</span>}
           {song.needs_verify && (
             <span className="rounded-full bg-danger/15 px-2 py-0.5 font-medium text-danger">Check chords</span>

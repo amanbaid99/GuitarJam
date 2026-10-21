@@ -3,22 +3,19 @@
 import Link from "next/link"
 import { useOptimistic, useState, useTransition } from "react"
 import { LyricsView } from "@/components/lyrics-view"
-import { shortDate } from "@/lib/dates"
 import { SONG_STATUSES, type SongStatus } from "@/lib/domain"
-import { STATUS_LABEL, lastPractisedLabel, type Family, type Song } from "@/lib/songs"
+import { STATUS_LABEL, type Family, type Song } from "@/lib/songs"
 import { markVerified, saveLyrics, saveMyVersion, setSongStatus } from "../actions"
 import { ChordTools } from "../chord-tools"
 import { SongEditForm } from "../song-edit-form"
 
-export type Played = { date: string; minutes: number; how_it_went: string | null }
-
-type Props = { song: Song; families: Family[]; history: Played[]; today: string }
+type Props = { song: Song; families: Family[] }
 
 const LYRICS_HELP = `Put each chord in square brackets just before the word it lands on:
 [G]Look at the [D]stars, look how they [Cadd9]shine for you
 Lines like [Chorus] or Verse 2: become headings.`
 
-export function SongDetail({ song, families, history, today }: Props) {
+export function SongDetail({ song, families }: Props) {
   const family = families.find((f) => f.id === song.family_id) ?? null
   const [status, setOptimisticStatus] = useOptimistic(song.status as SongStatus)
   const [editing, setEditing] = useState<"none" | "details" | "lyrics">("none")
@@ -128,26 +125,6 @@ export function SongDetail({ song, families, history, today }: Props) {
         </section>
       )}
 
-      <section className="card flex flex-col gap-2" aria-label="Practice history">
-        <h2 className="font-semibold">Practice</h2>
-        <p className="text-sm text-muted">
-          {history.length === 0
-            ? "Not logged in a session yet."
-            : `Played in ${history.length} session${history.length === 1 ? "" : "s"}. Last: ${lastPractisedLabel(song.last_practised, today).toLowerCase()}.`}
-        </p>
-        {history.length > 0 && (
-          <ul className="flex flex-col gap-1 text-sm">
-            {history.slice(0, 5).map((h, i) => (
-              <li key={i} className="flex justify-between text-muted">
-                <span>{shortDate(h.date)}</span>
-                <span>
-                  {h.minutes} min{h.how_it_went ? ` · ${h.how_it_went}` : ""}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
 
       {error && (
         <p role="alert" className="text-sm text-danger">
