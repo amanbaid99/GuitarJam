@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { GroupPicker, suggestedGroupId } from "@/components/group-picker"
 import { DIFFICULTIES, SONG_STATUSES, STYLES } from "@/lib/domain"
 import { DIFFICULTY_LABEL, HINT_MAX, STATUS_LABEL, STYLE_LABEL, type Family, type Song } from "@/lib/songs"
 import { updateSong, type SongEdit } from "./actions"
@@ -18,6 +19,10 @@ export function SongEditForm({
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
   const [hint, setHint] = useState(song.first_line_hint ?? "")
+  const [chords, setChords] = useState(song.chords ?? "")
+  // Keeps the song's group; if it has none yet, follows the suggestion until you pick.
+  const [picked, setPicked] = useState<string | null>(song.family_id ?? (song.chords?.trim() ? "" : null))
+  const familyId = picked ?? suggestedGroupId(chords, families)
 
   function submit(form: FormData) {
     const value = (name: string) => String(form.get(name) ?? "")
@@ -27,9 +32,9 @@ export function SongEditForm({
       status: value("status") as SongEdit["status"],
       difficulty: value("difficulty") as SongEdit["difficulty"],
       style: value("style") as SongEdit["style"],
-      family_id: value("family_id"),
+      family_id: familyId,
       key_capo: value("key_capo"),
-      chords: value("chords"),
+      chords,
       first_line_hint: value("first_line_hint"),
       tab_link: value("tab_link"),
       notes: value("notes"),
@@ -81,29 +86,22 @@ export function SongEditForm({
             ))}
           </select>
         </Field>
-        <Field label="Family">
-          <select name="family_id" defaultValue={song.family_id ?? ""} className="field">
-            <option value="">Unassigned</option>
-            {families.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
-            ))}
-          </select>
-        </Field>
       </div>
 
       <Field label="Key / capo">
         <input name="key_capo" defaultValue={song.key_capo ?? ""} placeholder="Capo 3" className="field" />
       </Field>
-      <Field label="Chords">
+      <Field label="Chords (by section if they change: Verse, Chorus, Bridge)">
         <textarea
           name="chords"
-          defaultValue={song.chords ?? ""}
+          value={chords}
+          onChange={(e) => setChords(e.target.value)}
+          placeholder={"Verse: G Em C D\nChorus: C D G"}
           rows={5}
           className="field min-h-32 py-3 font-mono text-base"
         />
       </Field>
+      <GroupPicker groups={families} chords={chords} value={familyId} onChange={setPicked} />
       <Field label={`First line hint (${hint.length}/${HINT_MAX}, a few words, never full lyrics)`}>
         <input
           name="first_line_hint"

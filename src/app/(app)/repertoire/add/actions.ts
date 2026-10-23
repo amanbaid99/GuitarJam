@@ -4,6 +4,7 @@ import { refresh } from "next/cache"
 import { z } from "zod"
 import { requireUser } from "@/lib/auth"
 import { extractSongs, type ExtractResult } from "@/lib/import/extract"
+import { groupFor, lastPositions } from "@/lib/groups-server"
 import { songEditSchema } from "@/lib/song-schema"
 import { createClient } from "@/lib/supabase/server"
 
@@ -35,7 +36,7 @@ export async function importScreenshot(paths: string[]): Promise<ExtractResult> 
     }
 
     const [families, songs] = await Promise.all([
-      supabase.from("families").select("id, name"),
+      supabase.from("families").select("id, key"),
       supabase.from("songs").select("title"),
     ])
     return await extractSongs(
@@ -76,14 +77,26 @@ export async function addSongs(input: NewSong[]): Promise<AddResult> {
   }
 
   const supabase = await createClient()
-  // RLS hides other people's families, so every family id must be one of yours.
-  const familyIds = [...new Set(parsed.data.flatMap((s) => (s.family_id ? [s.family_id] : [])))]
-  if (familyIds.length) {
-    const { data } = await supabase.from("families").select("id").in("id", familyIds)
-    if ((data ?? []).length !== familyIds.length) return { ok: false, error: "Unknown family." }
+  // Only songs with chords join a group.
+  const rows = parsed.data.map((s) => ({ ...s, family_id: groupFor(s.family_id, s.chords) }))
+
+  // RLS hides other people's groups, so every group id must be one of yours.
+  const groupIds = [...new Set(rows.flatMap((s) => (s.family_id ? [s.family_id] : [])))]
+  if (groupIds.length) {
+    const { data } = await supabase.from("families").select("id").in("id", groupIds)
+    if ((data ?? []).length !== groupIds.length) return { ok: false, error: "Unknown group." }
   }
 
-  const { data, error } = await supabase.from("songs").insert(parsed.data).select("id")
+  // New songs go to the end of their group.
+  const last = await lastPositions(supabase, groupIds)
+  const placed = rows.map((s) => {
+    if (!s.family_id) return { ...s, group_position: null }
+    const next = (last.get(s.family_id) ?? 0) + 1
+    last.set(s.family_id, next)
+    return { ...s, group_position: next }
+  })
+
+  const { data, error } = await supabase.from("songs").insert(placed).select("id")
   if (error) return { ok: false, error: error.message }
 
   refresh()

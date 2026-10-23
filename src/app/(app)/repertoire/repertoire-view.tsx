@@ -52,11 +52,11 @@ export function RepertoireView({ families, songs }: Props) {
     [sort, visible, families],
   )
 
-  // Songs per family that appear in Performance mode (everything but "want to learn").
+  // Songs per group (all of them play, in your order).
   const playable = useMemo(() => {
     const counts = new Map<string, number>()
     for (const s of songs) {
-      if (s.family_id && s.status !== "want_to_learn") {
+      if (s.family_id) {
         counts.set(s.family_id, (counts.get(s.family_id) ?? 0) + 1)
       }
     }
@@ -170,14 +170,14 @@ export function RepertoireView({ families, songs }: Props) {
               className="flex min-h-16 w-full items-center gap-3 rounded-3xl border border-border bg-surface-2 px-5 py-3 text-left"
             >
               <div className="min-w-0 flex-1">
-                <div className="text-lg font-semibold">{group.family?.name ?? "Unassigned"}</div>
+                <div className="text-lg font-semibold">{group.family?.name ?? "Other"}</div>
                 {group.family ? (
                   <div className="truncate text-sm text-muted">
-                    Key of {group.family.key} · {group.family.numbers}
+                    Key of {group.family.key}
                     {group.family.vibe ? ` · ${group.family.vibe}` : ""}
                   </div>
                 ) : (
-                  <div className="text-sm text-muted">Songs without a family</div>
+                  <div className="text-sm text-muted">Songs without a group</div>
                 )}
               </div>
               <span className="rounded-full bg-bg px-3 py-1 text-sm tabular-nums text-muted">
@@ -190,7 +190,7 @@ export function RepertoireView({ families, songs }: Props) {
                 href={`/perform/family/${group.family.id}`}
                 className="btn-primary min-h-12 text-base"
               >
-                Play medley ({playable.get(group.family.id)} songs)
+                Play this group ({playable.get(group.family.id)} songs)
               </Link>
             )}
             {isOpen && (

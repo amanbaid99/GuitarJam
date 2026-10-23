@@ -43,7 +43,14 @@ export async function seedUser(
   const knownFamilies = new Set(existingFamilies.map((f) => f.name))
   const newFamilies: TablesInsert<"families">[] = data.families
     .filter((f) => !knownFamilies.has(f.name))
-    .map((f) => ({ user_id: userId, name: f.name, key: f.key, numbers: f.numbers, vibe: f.vibe }))
+    .map((f) => ({
+      user_id: userId,
+      name: f.name,
+      key: f.key,
+      numbers: f.numbers,
+      vibe: f.vibe,
+      position: data.families.indexOf(f) + 1,
+    }))
 
   let insertedFamilies: { id: string; name: string }[] = []
   if (newFamilies.length) {
@@ -116,7 +123,7 @@ export async function seedUser(
   if (setCountErr) throw setCountErr
   if (!setCount) {
     const [{ data: allSongs, error: e1 }, { data: allFamilies, error: e2 }] = await Promise.all([
-      supabase.from("songs").select("id, title, artist, status, difficulty, style, family_id").eq("user_id", userId),
+      supabase.from("songs").select("id, title, artist, status, difficulty, style, family_id, chords").eq("user_id", userId),
       supabase.from("families").select("id, name, vibe").eq("user_id", userId),
     ])
     if (e1 ?? e2) throw e1 ?? e2

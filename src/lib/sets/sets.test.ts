@@ -15,6 +15,7 @@ const songs: SetSong[] = SEED_REPERTOIRE.songs.map((s, i) => ({
   family_id: s.family,
   family_name: s.family,
   family_vibe: s.family ? vibe[s.family] : null,
+  chords: s.chords,
 }))
 const byId = new Map(songs.map((s) => [s.id, s]))
 const titles = (ids: string[]) => ids.map((id) => byId.get(id)!.title)
@@ -27,7 +28,7 @@ describe("goToSet", () => {
     expect(set).toContain("Wonderful Tonight")
     expect(set).toContain("Perfect")
     const medley = set.slice(1, 4)
-    for (const t of medley) expect(byId.get(goToSet(songs).song_ids[set.indexOf(t)])!.family_name).toBe("Em-D-C")
+    for (const t of medley) expect(byId.get(goToSet(songs).song_ids[set.indexOf(t)])!.chords).toMatch(/^Em\b/)
   })
 
   it("skips songs you cannot play yet", () => {
@@ -66,7 +67,7 @@ describe("templateSet", () => {
 
   it("ends on a sing-along and has at most one hard song", () => {
     const set = templateSet(songs, { room: "anyone", mix: "mixed", minutes: 60 })
-    expect(byId.get(set.song_ids.at(-1)!)!.family_vibe).toMatch(/sing-along/)
+    expect(byId.get(set.song_ids.at(-1)!)!.family_vibe).toMatch(/sing-along/i)
     expect(set.song_ids.filter((id) => byId.get(id)!.difficulty === "hard").length).toBeLessThanOrEqual(1)
   })
 

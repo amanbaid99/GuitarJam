@@ -9,7 +9,7 @@ export type SeedState = { message?: string; error?: string }
 
 /**
  * Starter data. The owner gets their full Notion repertoire; invited members get
- * the 5 chord families and add their own songs. Safe to tap twice.
+ * the 4 song groups and add their own songs. Safe to tap twice.
  */
 export async function loadStarterData(): Promise<SeedState> {
   const user = await requireUser()

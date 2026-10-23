@@ -2,15 +2,15 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useMemo, useRef, useState, useTransition } from "react"
+import { useRef, useState, useTransition } from "react"
 import { DIFFICULTIES, SONG_STATUSES, STYLES, type SongStatus } from "@/lib/domain"
 import { prepareScreenshot } from "@/lib/image"
+import { GroupPicker, suggestedGroupId } from "@/components/group-picker"
 import { LyricsView } from "@/components/lyrics-view"
 import type { ImportedSong } from "@/lib/import/clean"
 import { parsePastedSheet, type PastedSong } from "@/lib/import/paste"
 import { DIFFICULTY_LABEL, HINT_MAX, STATUS_LABEL, STYLE_LABEL, type Family } from "@/lib/songs"
 import { createClient } from "@/lib/supabase/client"
-import { suggestFamily } from "@/lib/theory"
 import { addSongs, importScreenshot } from "./actions"
 
 type Props = { userId: string; families: Family[] }
@@ -62,48 +62,12 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-/** Shows the theory engine's family suggestion for some chords, with one tap to apply. */
-function FamilyPicker({
-  families,
-  chords,
-  value,
-  onChange,
-}: {
-  families: Family[]
-  chords: string
-  value: string
-  onChange: (id: string) => void
-}) {
-  const suggestion = useMemo(() => (chords ? suggestFamily(chords, families) : null), [chords, families])
-  const suggested = families.find((f) => f.id === suggestion?.familyId)
-  return (
-    <Field label="Family">
-      <select value={value} onChange={(e) => onChange(e.target.value)} className="field">
-        <option value="">Unassigned</option>
-        {families.map((f) => (
-          <option key={f.id} value={f.id}>
-            {f.name}
-            {f.id === suggestion?.familyId ? " (suggested)" : ""}
-          </option>
-        ))}
-      </select>
-      {suggested && value !== suggested.id && (
-        <button
-          type="button"
-          onClick={() => onChange(suggested.id)}
-          className="self-start rounded-full bg-accent/15 px-3 py-2 text-sm font-medium text-accent"
-        >
-          Use suggested: {suggested.name}
-        </button>
-      )}
-    </Field>
-  )
-}
-
 function ManualForm({ families }: { families: Family[] }) {
   const router = useRouter()
   const [chords, setChords] = useState("")
-  const [familyId, setFamilyId] = useState("")
+  // null = follow the suggestion from the chords; a value = you picked one.
+  const [picked, setPicked] = useState<string | null>(null)
+  const familyId = picked ?? suggestedGroupId(chords, families)
   const [hint, setHint] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
@@ -150,7 +114,7 @@ function ManualForm({ families }: { families: Family[] }) {
           className="field min-h-28 py-3 font-mono text-base"
         />
       </Field>
-      <FamilyPicker families={families} chords={chords} value={familyId} onChange={setFamilyId} />
+      <GroupPicker groups={families} chords={chords} value={familyId} onChange={setPicked} />
       <div className="grid grid-cols-2 gap-3">
         <Field label="Status">
           <select name="status" defaultValue="learning" className="field">
@@ -376,8 +340,8 @@ function ScreenshotImport({ userId, families }: Props) {
                 </select>
               </Field>
             </div>
-            <FamilyPicker
-              families={families}
+            <GroupPicker
+              groups={families}
               chords={s.chords ?? ""}
               value={s.family_id ?? ""}
               onChange={(id) => update(i, { family_id: id || null })}
@@ -451,7 +415,8 @@ function PasteImport({ families }: { families: Family[] }) {
   const [text, setText] = useState("")
   const [song, setSong] = useState<PastedSong | null>(null)
   const [status, setStatus] = useState<SongStatus>("learning")
-  const [familyId, setFamilyId] = useState("")
+  const [picked, setPicked] = useState<string | null>(null)
+  const familyId = picked ?? (song ? suggestedGroupId(song.chords ?? "", families) : "")
   const [keepLyrics, setKeepLyrics] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
@@ -464,7 +429,7 @@ function PasteImport({ families }: { families: Family[] }) {
       return
     }
     setSong(parsed)
-    setFamilyId(parsed.chords ? (suggestFamily(parsed.chords, families)?.familyId ?? "") : "")
+    setPicked(null)
     setKeepLyrics(parsed.lyricLines > 0)
   }
 
@@ -557,7 +522,7 @@ function PasteImport({ families }: { families: Family[] }) {
             </select>
           </Field>
         </div>
-        <FamilyPicker families={families} chords={song.chords ?? ""} value={familyId} onChange={setFamilyId} />
+        <GroupPicker groups={families} chords={song.chords ?? ""} value={familyId} onChange={setPicked} />
         <Field label="Chords by section">
           <textarea
             value={song.chords ?? ""}

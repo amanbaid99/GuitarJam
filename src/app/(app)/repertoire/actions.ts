@@ -4,6 +4,7 @@ import { refresh } from "next/cache"
 import { z } from "zod"
 import { requireUser } from "@/lib/auth"
 import { SONG_STATUSES } from "@/lib/domain"
+import { groupFor, lastPositions } from "@/lib/groups-server"
 import { songEditSchema } from "@/lib/song-schema"
 import { createClient } from "@/lib/supabase/server"
 
@@ -22,19 +23,22 @@ export async function updateSong(id: string, input: SongEdit): Promise<ActionRes
 
   const supabase = await createClient()
 
-  // RLS hides other people's families, so this also proves the family is yours.
-  if (parsed.data.family_id) {
-    const { data: fam } = await supabase
-      .from("families")
-      .select("id")
-      .eq("id", parsed.data.family_id)
-      .maybeSingle()
-    if (!fam) return { ok: false, error: "That family does not exist." }
+  // RLS hides other people's groups, so this also proves the group is yours.
+  const familyId = groupFor(parsed.data.family_id, parsed.data.chords)
+  if (familyId) {
+    const { data: fam } = await supabase.from("families").select("id").eq("id", familyId).maybeSingle()
+    if (!fam) return { ok: false, error: "That group does not exist." }
   }
+
+  // Joining a new group puts the song at the end of it; staying keeps its place.
+  const { data: before } = await supabase.from("songs").select("family_id, group_position").eq("id", id).maybeSingle()
+  let groupPosition: number | null = null
+  if (familyId && before?.family_id === familyId) groupPosition = before.group_position
+  else if (familyId) groupPosition = ((await lastPositions(supabase, [familyId])).get(familyId) ?? 0) + 1
 
   const { error, count } = await supabase
     .from("songs")
-    .update(parsed.data, { count: "exact" })
+    .update({ ...parsed.data, family_id: familyId, group_position: groupPosition }, { count: "exact" })
     .eq("id", id)
   if (error) return { ok: false, error: error.message }
   if (!count) return { ok: false, error: "Song not found." }
@@ -128,6 +132,36 @@ export async function deleteSong(id: string): Promise<ActionResult> {
       .update({ song_ids: set.song_ids.filter((s) => s !== id) })
       .eq("id", set.id)
   }
+
+  refresh()
+  return { ok: true }
+}
+
+/**
+ * Moves a song into a group (at the end) or to Other (groupId null).
+ * Songs without chords cannot join a group.
+ */
+export async function moveToGroup(songId: string, groupId: string | null): Promise<ActionResult> {
+  await requireUser()
+  const ok = z.object({ songId: z.uuid(), groupId: z.uuid().nullable() }).safeParse({ songId, groupId })
+  if (!ok.success) return { ok: false, error: "Unknown song or group." }
+
+  const supabase = await createClient()
+  const { data: song } = await supabase.from("songs").select("chords, family_id").eq("id", songId).maybeSingle()
+  if (!song) return { ok: false, error: "Song not found." }
+  if (groupId && !song.chords?.trim()) return { ok: false, error: "Add the chords first, then pick a group." }
+  if (song.family_id === groupId) return { ok: true }
+  if (groupId) {
+    const { data: fam } = await supabase.from("families").select("id").eq("id", groupId).maybeSingle()
+    if (!fam) return { ok: false, error: "That group does not exist." }
+  }
+
+  const position = groupId ? ((await lastPositions(supabase, [groupId])).get(groupId) ?? 0) + 1 : null
+  const { error } = await supabase
+    .from("songs")
+    .update({ family_id: groupId, group_position: position })
+    .eq("id", songId)
+  if (error) return { ok: false, error: error.message }
 
   refresh()
   return { ok: true }

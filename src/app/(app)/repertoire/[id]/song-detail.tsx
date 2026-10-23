@@ -38,7 +38,7 @@ export function SongDetail({ song, families }: Props) {
       <div>
         <h1 className="text-3xl leading-tight font-bold tracking-tight">{song.title}</h1>
         <p className="text-muted">
-          {[song.artist, family ? `${family.name} family` : null].filter(Boolean).join(" · ")}
+          {[song.artist, family ? `${family.name} group` : song.chords?.trim() ? "Other" : null].filter(Boolean).join(" · ")}
         </p>
       </div>
 

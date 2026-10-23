@@ -32,7 +32,7 @@ async function Song({ params }: { params: PageProps<"/repertoire/[id]">["params"
   const supabase = await createClient()
   const [song, families] = await Promise.all([
     supabase.from("songs").select("*").eq("id", id).maybeSingle(),
-    supabase.from("families").select("*").order("created_at").order("name"),
+    supabase.from("families").select("*").order("position").order("created_at"),
   ])
   if (song.error || !song.data) notFound()
 

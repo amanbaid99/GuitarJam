@@ -70,7 +70,7 @@ export type ExtractResult = { ok: true; songs: ImportedSong[] } | { ok: false; e
  */
 export async function extractSongs(
   images: string | string[],
-  families: { id: string; name: string }[],
+  families: { id: string; key: string }[],
   existingTitles: string[],
   fetchImpl?: ChatJsonOptions<unknown>["fetchImpl"],
 ): Promise<ExtractResult> {

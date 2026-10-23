@@ -19,6 +19,7 @@ Stack: Next.js 16 (App Router, Cache Components) + TypeScript + Tailwind 4, Supa
 - [x] Step 7: Sets (AI set builder with built-in fallback, drag to reorder, Go-to set, play in performance mode)
 - [x] Step 8: Add song: Paste chords (read by the app, no AI, chords placed over the words), screenshot import for song lists (AI, long pages sliced, checked against the page's chord list), or type it in
 - [x] Delete song (song page, also removes it from sets)
+- [x] Groups: songs that share chord shapes (by key, capo not counted) play as ready-made sets in your order. New songs get a suggested group to confirm; songs without chords wait outside; the rest go to Other. AI set builder parked for now
 - [x] Song page: your lyrics with chords above the words, Save as my version, practice history
 - [x] Songs: Show and Sort dropdowns (A to Z by default; family, key, least played, difficulty)
 - [x] Invite only: Request access on sign-in, owner approves in Settings > Members

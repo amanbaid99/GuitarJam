@@ -18,7 +18,7 @@ import {
   shapesForCapo,
   soundingFromShapes,
   stripFretDiagrams,
-  suggestFamily,
+  suggestGroup,
   transposeChord,
   transposeKey,
   transposeText,
@@ -239,29 +239,13 @@ describe("capo", () => {
   })
 })
 
-describe("suggestFamily", () => {
-  const families = SEED_REPERTOIRE.families.map((f) => ({ id: f.name, name: f.name }))
+describe("suggestGroup on the seed library", () => {
+  const groups = SEED_REPERTOIRE.families.map((f) => ({ id: f.name, key: f.key }))
 
-  it("finds the obvious family", () => {
-    expect(suggestFamily("Am, G, F, G", families)?.familyId).toBe("Am-G-F")
-    expect(suggestFamily("G, Em, C, D", families)?.familyId).toBe("G-Em-C-D")
-    // O Sanam (G C A D) fully contains D-G-A, so that wins over G-Em-C-D.
-    expect(suggestFamily("Intro: G, C, A, D. Main: G, D, C, D", families)?.familyId).toBe("D-G-A")
-  })
-
-  it("treats extensions as their base chord", () => {
-    expect(suggestFamily("G, Em, Cadd9, D", families)?.familyId).toBe("G-Em-C-D")
-  })
-
-  it("returns null when nothing fits", () => {
-    expect(suggestFamily("C#m7, Aadd9, E, Badd11", families)).toBeNull()
-    expect(suggestFamily("no chords here", families)).toBeNull()
-  })
-
-  it("agrees with most of the families picked by hand in Notion", () => {
+  it("agrees with most of the groups picked by hand", () => {
     const placed = SEED_REPERTOIRE.songs.filter((s) => s.family && s.chords)
-    const agree = placed.filter((s) => suggestFamily(s.chords!, families)?.familyId === s.family)
-    expect(agree.length / placed.length).toBeGreaterThanOrEqual(0.7)
+    const agree = placed.filter((s) => suggestGroup(s.chords!, groups)?.groupId === s.family)
+    expect(agree.length / placed.length).toBeGreaterThanOrEqual(0.85)
   })
 })
 

@@ -1,11 +1,9 @@
 import { Suspense } from "react"
 import { getSetsData } from "@/lib/data"
+import { GroupsView } from "./groups-view"
 import { SetsView } from "./sets-view"
 
 export const metadata = { title: "Sets" }
-
-// Free AI models can be slow: give set building up to 2 minutes.
-export const maxDuration = 120
 
 export default function SetsPage() {
   return (
@@ -27,5 +25,10 @@ async function Sets() {
       </p>
     )
   }
-  return <SetsView sets={data.sets} songs={data.songs} />
+  return (
+    <div className="flex flex-col gap-8">
+      <GroupsView groups={data.groups} other={data.other} waiting={data.waiting} />
+      <SetsView sets={data.sets} songs={data.songs} />
+    </div>
+  )
 }

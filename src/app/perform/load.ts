@@ -4,9 +4,6 @@ import { chartView, playLabel } from "@/lib/song-view"
 import { createClient } from "@/lib/supabase/server"
 import type { DeckSong } from "./deck"
 
-/** Songs that make sense on stage: everything except "want to learn". */
-const PLAYABLE = ["learning", "can_play", "polished"]
-
 type Deck = { title: string; songs: DeckSong[] } | null
 
 const SONG_COLUMNS = "id, title, chords, lyrics, key_capo, my_transpose, my_capo, first_line_hint, family_id"
@@ -58,14 +55,15 @@ export async function loadFamilyDeck(familyId: string): Promise<Deck> {
   const family = families.get(familyId)
   if (!family) return null
 
+  // A group plays in the order you set on the Sets tab. Every song in it has chords.
   const { data: songs } = await supabase
     .from("songs")
     .select(SONG_COLUMNS)
     .eq("family_id", familyId)
-    .in("status", PLAYABLE)
+    .order("group_position", { nullsFirst: false })
     .order("title")
 
-  return { title: `${family.name} medley`, songs: (songs ?? []).map((s) => toDeckSong(s, family)) }
+  return { title: family.name, songs: (songs ?? []).map((s) => toDeckSong(s, family)) }
 }
 
 export async function loadSetDeck(setId: string): Promise<Deck> {

@@ -29,6 +29,7 @@ const song = (over: Partial<Song>): Song => ({
   lyrics: null,
   my_capo: null,
   my_transpose: 0,
+  group_position: null,
   created_at: "2026-10-19T00:00:00Z",
   ...over,
 })
@@ -40,6 +41,7 @@ const family = (id: string, name: string): Family => ({
   key: "G",
   numbers: "I-IV-V",
   vibe: null,
+  position: 0,
   created_at: "2026-10-19T00:00:00Z",
 })
 

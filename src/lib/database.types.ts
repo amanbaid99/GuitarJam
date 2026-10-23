@@ -22,6 +22,7 @@ export type Database = {
           key: string
           name: string
           numbers: string
+          position: number
           user_id: string
           vibe: string | null
         }
@@ -31,6 +32,7 @@ export type Database = {
           key: string
           name: string
           numbers: string
+          position?: number
           user_id?: string
           vibe?: string | null
         }
@@ -40,6 +42,7 @@ export type Database = {
           key?: string
           name?: string
           numbers?: string
+          position?: number
           user_id?: string
           vibe?: string | null
         }
@@ -173,6 +176,7 @@ export type Database = {
           difficulty: string | null
           family_id: string | null
           first_line_hint: string | null
+          group_position: number | null
           id: string
           key_capo: string | null
           last_practised: string | null
@@ -194,6 +198,7 @@ export type Database = {
           difficulty?: string | null
           family_id?: string | null
           first_line_hint?: string | null
+          group_position?: number | null
           id?: string
           key_capo?: string | null
           last_practised?: string | null
@@ -215,6 +220,7 @@ export type Database = {
           difficulty?: string | null
           family_id?: string | null
           first_line_hint?: string | null
+          group_position?: number | null
           id?: string
           key_capo?: string | null
           last_practised?: string | null

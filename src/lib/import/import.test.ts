@@ -3,9 +3,8 @@ import { checkAgainstLegend, cleanImported, stripLyrics } from "./clean"
 import { extractSongs } from "./extract"
 
 const families = [
-  { id: "f-emdc", name: "Em-D-C" },
-  { id: "f-amgf", name: "Am-G-F" },
-  { id: "f-gemcd", name: "G-Em-C-D" },
+  { id: "f-g", key: "G" },
+  { id: "f-c", key: "C" },
 ]
 
 describe("stripLyrics", () => {
@@ -37,7 +36,7 @@ describe("cleanImported", () => {
       families,
       ["yellow"],
     )
-    expect(songs[0]).toMatchObject({ family_id: "f-amgf", duplicate: false })
+    expect(songs[0]).toMatchObject({ family_id: "f-c", duplicate: false })
     expect(songs[1]).toMatchObject({ duplicate: true, key_capo: "Capo 4" })
   })
 
@@ -75,7 +74,7 @@ describe("extractSongs", () => {
     const res = await extractSongs("data:image/jpeg;base64,AAAA", families, [], fetchImpl)
     expect(res.ok).toBe(true)
     if (!res.ok) return
-    expect(res.songs[0]).toMatchObject({ title: "Kun Faya Kun", chords: "Em, D, C", family_id: "f-emdc", lyricsRemoved: true })
+    expect(res.songs[0]).toMatchObject({ title: "Kun Faya Kun", chords: "Em, D, C", family_id: "f-g", lyricsRemoved: true })
 
     const body = JSON.parse(String((fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1].body))
     expect(body.model).toMatch(/nemotron.*vl.*:free/)

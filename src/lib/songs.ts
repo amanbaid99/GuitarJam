@@ -77,16 +77,18 @@ export type FamilyGroup = {
 }
 
 /**
- * Groups songs by family in the families' order, then an Unassigned group.
- * Songs inside a group are sorted by title. Empty groups are kept so you can
+ * Groups songs by group (families table) in the groups' order, then Other.
+ * Songs inside a group are in your play order, then by title. Empty groups are kept so you can
  * still see every family while filtering.
  */
 export function groupByFamily(families: Family[], songs: Song[]): FamilyGroup[] {
   const byTitle = (a: Song, b: Song) => a.title.localeCompare(b.title)
+  const byOrder = (a: Song, b: Song) =>
+    (a.group_position ?? Number.MAX_SAFE_INTEGER) - (b.group_position ?? Number.MAX_SAFE_INTEGER) || byTitle(a, b)
   const known = new Set(families.map((f) => f.id))
   const groups: FamilyGroup[] = families.map((family) => ({
     family,
-    songs: songs.filter((s) => s.family_id === family.id).sort(byTitle),
+    songs: songs.filter((s) => s.family_id === family.id).sort(byOrder),
   }))
   groups.push({
     family: null,
@@ -99,7 +101,7 @@ export const SORT_MODES = ["family", "az", "key", "recent", "difficulty"] as con
 export type SortMode = (typeof SORT_MODES)[number]
 
 export const SORT_LABEL: Record<SortMode, string> = {
-  family: "Family",
+  family: "Group",
   az: "A to Z",
   key: "Key",
   recent: "Least played",

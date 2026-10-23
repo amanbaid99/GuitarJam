@@ -3,8 +3,8 @@ import { SEED_REPERTOIRE, repertoireSchema } from "./repertoire"
 import { SEED_SKILLS } from "./skills"
 
 describe("seed repertoire", () => {
-  it("has the 5 families and 63 songs from Notion", () => {
-    expect(SEED_REPERTOIRE.families).toHaveLength(5)
+  it("has the 4 groups and 63 songs from Notion", () => {
+    expect(SEED_REPERTOIRE.families).toHaveLength(4)
     expect(SEED_REPERTOIRE.songs).toHaveLength(63)
   })
 

@@ -18,6 +18,8 @@ export type SetSong = {
   family_id: string | null
   family_name: string | null
   family_vibe: string | null
+  /** Chords as written, used to spot the Em-D-C songs. */
+  chords: string | null
 }
 
 export type SetRequest = { room: string; mix: LanguageMix; minutes: number }
@@ -148,6 +150,9 @@ export function templateSet(songs: SetSong[], req: SetRequest): SetProposal {
  * (Wonderful Tonight), and a sing-along closer (Yaaron or Ek Ajnabee Haseena Se).
  * Uses only songs you can play; anything missing is skipped.
  */
+/** Em-D-C songs: they open on Em (the minor side of the G group). */
+const startsOnEm = (s: SetSong) => /^\s*(?:[A-Za-z ]+:\s*)?Em\b/.test(s.chords ?? "")
+
 export function goToSet(songs: SetSong[]): SetProposal {
   const pool = playable(songs)
   const find = (title: string) => pool.find((s) => s.title.toLowerCase() === title.toLowerCase())
@@ -156,7 +161,7 @@ export function goToSet(songs: SetSong[]): SetProposal {
   const opener = firstOf("Stand by Me", "Pani Da Rang")
   const closer = firstOf("Yaaron", "Ek Ajnabee Haseena Se")
   const medley = pool
-    .filter((s) => s.family_name === "Em-D-C" && s.id !== opener?.id && diff(s) === 0)
+    .filter((s) => startsOnEm(s) && s.id !== opener?.id && diff(s) === 0)
     .sort((a, b) => a.title.localeCompare(b.title))
     .slice(0, 3)
   const switchSong = firstOf("Perfect", "Photograph", "Hero")

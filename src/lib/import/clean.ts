@@ -1,5 +1,5 @@
 import { noDashesPure } from "./text"
-import { findChords, parseChord, suggestFamily } from "@/lib/theory"
+import { findChords, parseChord, suggestGroup } from "@/lib/theory"
 
 /** What the vision model returns for one song. */
 export type RawImportedSong = {
@@ -85,7 +85,7 @@ const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ")
  */
 export function cleanImported(
   raw: RawImportedSong[],
-  families: { id: string; name: string }[],
+  families: { id: string; key: string }[],
   existingTitles: string[],
 ): ImportedSong[] {
   const existing = new Set(existingTitles.map(norm))
@@ -104,7 +104,7 @@ export function cleanImported(
       artist: r.artist ? noDashesPure(r.artist).trim().slice(0, 200) || null : null,
       chords,
       key_capo: r.key_capo ? noDashesPure(r.key_capo).trim().slice(0, 100) || null : null,
-      family_id: chords ? (suggestFamily(chords, families)?.familyId ?? null) : null,
+      family_id: chords ? (suggestGroup(chords, families)?.groupId ?? null) : null,
       duplicate: existing.has(norm(title)),
       lyricsRemoved: guarded.removed,
       warning: checkAgainstLegend(chords, r.chord_legend ?? []),

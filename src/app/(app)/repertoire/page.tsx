@@ -59,7 +59,7 @@ function Starter({ isOwner, hasFamilies }: { isOwner: boolean; hasFamilies: bool
       {isOwner ? (
         <SeedButton label="Load my repertoire" />
       ) : (
-        !hasFamilies && <SeedButton label="Set up the 5 chord families" />
+        !hasFamilies && <SeedButton label="Set up the 4 song groups" />
       )}
       <Link href="/repertoire/add" className={hasFamilies || isOwner ? "btn-ghost" : "btn-primary"}>
         Add your first song
