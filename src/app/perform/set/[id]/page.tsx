@@ -17,5 +17,5 @@ async function SetDeck({ params }: { params: PageProps<"/perform/set/[id]">["par
   const { id } = await params
   const deck = await loadSetDeck(id)
   if (!deck) notFound()
-  return <Deck title={deck.title} songs={deck.songs} backHref="/sets" />
+  return <Deck title={deck.title} songs={deck.songs} backHref="/sets" downloadable />
 }

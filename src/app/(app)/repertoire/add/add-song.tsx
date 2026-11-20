@@ -91,7 +91,7 @@ function ManualForm({ families }: { families: Family[] }) {
           needs_verify: false,
         },
       ])
-      if (res.ok) router.push("/repertoire")
+      if (res.ok) router.push(res.ids[0] ? `/repertoire/${res.ids[0]}` : "/repertoire")
       else setError(res.error)
     })
   }
@@ -173,7 +173,7 @@ type Stage =
   | { kind: "pick" }
   | { kind: "working"; step: string }
   | { kind: "review"; songs: ReviewSong[] }
-  | { kind: "done"; count: number }
+  | { kind: "done"; count: number; firstId?: string }
 
 type ReviewSong = ImportedSong & { include: boolean; status: SongStatus }
 
@@ -244,7 +244,7 @@ function ScreenshotImport({ families }: Props) {
           needs_verify: true, // AI-read: shows "Check chords" until you confirm
         })),
       )
-      if (res.ok) setStage({ kind: "done", count: res.count })
+      if (res.ok) setStage({ kind: "done", count: res.count, firstId: res.ids[0] })
       else setError(res.error)
     })
   }
@@ -255,9 +255,9 @@ function ScreenshotImport({ families }: Props) {
         <p className="text-2xl font-bold">
           Added {stage.count} song{stage.count === 1 ? "" : "s"}.
         </p>
-        <p className="text-muted">They show a Check chords badge until you confirm them on the Songs tab.</p>
-        <Link href="/repertoire" className="btn-primary">
-          Go to Songs
+        <p className="text-muted">Check the imported chords before playing.</p>
+        <Link href={stage.firstId ? `/repertoire/${stage.firstId}` : "/repertoire"} className="btn-primary">
+          {stage.firstId ? "Review first song" : "Go to Songs"}
         </Link>
         <button type="button" onClick={() => setStage({ kind: "pick" })} className="btn-ghost">
           Import another

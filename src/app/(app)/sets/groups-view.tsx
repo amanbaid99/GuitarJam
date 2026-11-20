@@ -3,6 +3,8 @@
 import Link from "next/link"
 import { useState, useTransition } from "react"
 import { GroupPicker, suggestedGroupId, type PickerGroup } from "@/components/group-picker"
+import { chartView } from "@/lib/song-view"
+import { extractChords, keyFit } from "@/lib/theory"
 import { GROUP_KEYS } from "@/lib/group-keys"
 import { STATUS_LABEL } from "@/lib/songs"
 import type { SongStatus } from "@/lib/domain"
@@ -16,6 +18,8 @@ export type ViewSong = {
   status: string
   key_capo: string | null
   chords: string | null
+  my_transpose: number
+  my_capo: number | null
 }
 export type ViewGroup = PickerGroup & { vibe: string | null; songs: ViewSong[] }
 
@@ -37,40 +41,59 @@ export function GroupsView({ groups, other, waiting }: Props) {
         <p className="text-sm text-muted">Songs that share chord shapes. Each group plays as a set, in your order.</p>
       </div>
 
-      {groups.map((g) => (
-        <article key={g.id} className="card flex flex-col gap-3">
-          <div className="min-w-0">
-            <h3 className="text-lg font-semibold">{g.name}</h3>
-            <p className="text-sm text-muted">
-              Key of {g.key} · {g.songs.length} song{g.songs.length === 1 ? "" : "s"}
-              {g.vibe ? ` · ${g.vibe}` : ""}
-            </p>
-          </div>
-          {g.songs.length > 0 ? (
-            <p className="text-sm">
-              {g.songs
-                .slice(0, 6)
-                .map((s) => s.title)
-                .join(" · ")}
-              {g.songs.length > 6 ? ` · +${g.songs.length - 6} more` : ""}
-            </p>
-          ) : (
-            <p className="text-sm text-muted">No songs yet. Songs join when their chords fit this key.</p>
-          )}
-          <div className="grid grid-cols-2 gap-2">
+      {groups.map((g) => {
+        const known = g.songs.filter((song) => song.status === "can_play" || song.status === "polished")
+        const arrangements = known.map((song) => chartView({
+          chords: song.chords, keyCapo: song.key_capo, capo: song.my_capo,
+          transpose: song.my_transpose, familyKey: g.key,
+        }))
+        const shapes = arrangements.map((view) => new Set(extractChords(view.chords ?? "")))
+        const shared = [...(shapes[0] ?? [])].filter((chord) => shapes.every((set) => set.has(chord)))
+        const outside = [...new Set(arrangements.flatMap((view) => keyFit(view.chords ?? "", g.key)?.outside ?? []))]
+        const capos = [...new Set(arrangements.map((view) => view.capo))]
+        return (
+          <article key={g.id} className="card flex flex-col gap-3">
+            <div className="min-w-0">
+              <h3 className="text-lg font-semibold">{g.name}</h3>
+              <p className="text-sm text-muted">
+                Key of {g.key} · {g.songs.length} song{g.songs.length === 1 ? "" : "s"}
+                {g.vibe ? ` · ${g.vibe}` : ""}
+              </p>
+            </div>
             {g.songs.length > 0 ? (
-              <Link href={`/perform/family/${g.id}`} className="btn-primary min-h-12 text-base">
-                Play
-              </Link>
+              <p className="text-sm">
+                {g.songs
+                  .slice(0, 6)
+                  .map((s) => s.title)
+                  .join(" · ")}
+                {g.songs.length > 6 ? ` · +${g.songs.length - 6} more` : ""}
+              </p>
             ) : (
-              <DeleteEmptyGroup id={g.id} />
+              <p className="text-sm text-muted">No songs yet. Songs join when their chords fit this key.</p>
             )}
-            <button type="button" onClick={() => setEditing(g.id)} className="btn-ghost min-h-12">
-              {g.songs.length > 1 ? "Order and edit" : "Edit"}
-            </button>
-          </div>
-        </article>
-      ))}
+            {known.length > 0 && (
+              <div className="space-y-1 text-sm text-muted">
+                <p>{known.length} ready to play{capos.length > 1 ? ` · Capo changes (${capos.join(", ")})` : capos[0] ? ` · Capo ${capos[0]}` : " · No capo"}</p>
+                {known.length > 1 && shared.length > 0 && <p>Shared shapes · {shared.join(" · ")}</p>}
+                {outside.length > 0 && <p>Outside the group key · {outside.join(" · ")}</p>}
+                <Link href={`/perform/family/${g.id}?known=1`} className="btn-primary mt-2 w-full">Play songs I know</Link>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-2">
+              {g.songs.length > 0 ? (
+                <Link href={`/perform/family/${g.id}?from=sets`} className={known.length ? "btn-ghost min-h-12" : "btn-primary min-h-12"}>
+                  Play all
+                </Link>
+              ) : (
+                <DeleteEmptyGroup id={g.id} />
+              )}
+              <button type="button" onClick={() => setEditing(g.id)} className="btn-ghost min-h-12">
+                {g.songs.length > 1 ? "Order and edit" : "Edit"}
+              </button>
+            </div>
+          </article>
+        )
+      })}
 
       {other.length > 0 && <OtherPile songs={other} groups={groups} />}
 

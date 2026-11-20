@@ -5,7 +5,7 @@ import { todayISO } from "@/lib/dates"
 import { createLocalStore } from "@/lib/local-store"
 import { PLAN_MINUTES, planSchema, planTotal, type Plan, type PlanMinutes } from "@/lib/plan/types"
 import { useWakeLock } from "@/lib/use-wake-lock"
-import { planSession } from "./actions"
+import { logSession, planSession } from "./actions"
 
 type PlanSong = { id: string; title: string }
 
@@ -25,21 +25,25 @@ const planStore = createLocalStore<Saved | null>(
 const localToday = () => todayISO(new Date(), Intl.DateTimeFormat().resolvedOptions().timeZone)
 
 type Props = {
+  quickPlan?: Plan
   songs: PlanSong[]
   chordsById: Record<string, string | null>
 }
 
-export function Planner({ songs, chordsById }: Props) {
+export function Planner({ songs, chordsById, quickPlan }: Props) {
   const saved = planStore.useValue()
-  const plan = saved && saved.date === localToday() ? saved.plan : null
+  const [useQuickPlan, setUseQuickPlan] = useState(Boolean(quickPlan))
+  const plan = useQuickPlan && quickPlan ? quickPlan : saved && saved.date === localToday() ? saved.plan : null
   const [minutes, setMinutes] = useState<PlanMinutes>(20)
   const [error, setError] = useState<string | null>(null)
+  const [startImmediately, setStartImmediately] = useState(false)
   const [pending, startTransition] = useTransition()
 
-  function makePlan() {
+  function makePlan(useCoach: boolean) {
     setError(null)
+    setStartImmediately(!useCoach)
     startTransition(async () => {
-      const res = await planSession(minutes)
+      const res = await planSession(minutes, useCoach)
       if (res.ok) planStore.set({ date: localToday(), plan: res.plan, source: res.source, note: res.note })
       else setError(res.error)
     })
@@ -50,8 +54,7 @@ export function Planner({ songs, chordsById }: Props) {
       {!plan ? (
         <>
           <div>
-            <h2 className="text-xl font-semibold">Practice</h2>
-            <p className="text-sm text-muted">How long have you got?</p>
+            <h2 className="text-xl font-semibold">How long have you got?</h2>
           </div>
           <div role="group" aria-label="Minutes" className="grid grid-cols-4 gap-2">
             {PLAN_MINUTES.map((m) => (
@@ -69,9 +72,10 @@ export function Planner({ songs, chordsById }: Props) {
               </button>
             ))}
           </div>
-          <button type="button" onClick={makePlan} disabled={pending} className="btn-primary">
-            {pending ? "Asking your coach..." : "Plan my session"}
+          <button type="button" onClick={() => makePlan(false)} disabled={pending} className="btn-primary">
+            {pending ? "Preparing…" : "Start practice"}
           </button>
+          <button type="button" onClick={() => makePlan(true)} disabled={pending} className="btn-ghost">Ask AI coach</button>
           {error && (
             <p role="alert" className="text-sm text-danger">
               {error}
@@ -82,11 +86,16 @@ export function Planner({ songs, chordsById }: Props) {
         <PlanRunner
           key={JSON.stringify(plan)}
           plan={plan}
-          source={saved?.source}
+          autoStart={useQuickPlan || startImmediately}
+          source={useQuickPlan ? "template" : saved?.source}
           note={saved?.note}
           songs={songs}
           chordsById={chordsById}
-          onClear={() => planStore.set(null)}
+          onClear={() => {
+            setUseQuickPlan(false)
+            setStartImmediately(false)
+            planStore.set(null)
+          }}
         />
       )}
     </section>
@@ -106,6 +115,7 @@ function PlanRunner({
   songs,
   chordsById,
   onClear,
+  autoStart,
 }: {
   plan: Plan
   source?: "ai" | "template"
@@ -113,10 +123,29 @@ function PlanRunner({
   songs: PlanSong[]
   chordsById: Record<string, string | null>
   onClear: () => void
+  autoStart: boolean
 }) {
   const [run, setRun] = useState<RunState>({ status: "idle", index: 0 })
-  const [now, setNow] = useState(() => Date.now())
+  const [now, setNow] = useState(0)
+  const [played, setPlayed] = useState<Record<number, number>>({})
+  const [rating, setRating] = useState<"rough" | "great">()
+  const [saveError, setSaveError] = useState("")
+  const [savedSession, setSavedSession] = useState(false)
+  const [saving, saveTransition] = useTransition()
   useWakeLock(run.status === "running")
+
+  const firstBlockMs = plan.blocks[0].minutes * 60_000
+  useEffect(() => {
+    if (!autoStart) return
+    const timer = setTimeout(() => {
+      const time = Date.now()
+      setNow(time)
+      setRun((current) => current.status === "idle" && current.index === 0
+        ? { status: "running", index: 0, endsAt: time + firstBlockMs }
+        : current)
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [autoStart, firstBlockMs])
 
   const block = plan.blocks[Math.min(run.index, plan.blocks.length - 1)]
   const blockMs = block.minutes * 60_000
@@ -130,6 +159,7 @@ function PlanRunner({
       setNow(t)
       if (t >= run.endsAt) {
         chime()
+        setPlayed((previous) => ({ ...previous, [run.index]: plan.blocks[run.index].minutes * 60_000 }))
         const next = run.index + 1
         setRun(
           next < plan.blocks.length
@@ -161,12 +191,16 @@ function PlanRunner({
   }
 
   function pause() {
-    if (run.status === "running") setRun({ status: "paused", index: run.index, remainingMs })
+    if (run.status === "running") {
+      setRun({ status: "paused", index: run.index, remainingMs: Math.max(0, run.endsAt - Date.now()) })
+    }
   }
 
-  function skip() {
+  function advance(finish = false) {
+    const elapsed = blockMs - (run.status === "running" ? Math.max(0, run.endsAt - Date.now()) : remainingMs)
+    if (elapsed > 0) setPlayed((previous) => ({ ...previous, [run.index]: elapsed }))
     const next = run.index + 1
-    if (next >= plan.blocks.length) {
+    if (finish || next >= plan.blocks.length) {
       setRun({ status: "done", index: run.index })
       return
     }
@@ -177,6 +211,23 @@ function PlanRunner({
         ? { status: "running", index: next, endsAt: t + plan.blocks[next].minutes * 60_000 }
         : { status: "idle", index: next },
     )
+  }
+
+  const playedMs = Object.values(played).reduce((total, ms) => total + ms, 0)
+  const loggedMinutes = Math.max(1, Math.round(playedMs / 60_000))
+  const songIds = [...new Set(plan.blocks.flatMap((item, index) => item.song_id && played[index] >= 1000 ? [item.song_id] : []))]
+
+  function save() {
+    setSaveError("")
+    saveTransition(async () => {
+      try {
+        const result = await logSession({ minutes: loggedMinutes, song_ids: songIds, how_it_went: rating })
+        if (result.ok) setSavedSession(true)
+        else setSaveError(result.error)
+      } catch {
+        setSaveError("Could not save your session. Try again.")
+      }
+    })
   }
 
   const songTitle = block.song_id ? songs.find((s) => s.id === block.song_id)?.title : null
@@ -206,32 +257,26 @@ function PlanRunner({
         </span>
       </div>
 
-      <ol className="flex flex-col gap-1">
-        {plan.blocks.map((b, i) => {
-          const isDone = run.status === "done" || i < run.index
-          const isNow = run.status !== "done" && i === run.index
-          return (
-            <li
-              key={i}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm ${
-                isNow ? "bg-accent/15 font-semibold" : isDone ? "text-muted line-through" : ""
-              }`}
-            >
-              <span className="w-10 shrink-0 tabular-nums text-muted">{b.minutes}m</span>
-              <span className="min-w-0 flex-1 truncate">{b.label}</span>
-              {isDone && <span aria-label="done">✓</span>}
-            </li>
-          )
-        })}
-      </ol>
-
       {run.status === "done" ? (
         <div className="flex flex-col gap-3 rounded-2xl bg-bg p-4 text-center">
-          <p className="text-2xl font-bold">Nice work.</p>
-          <p className="text-muted">That is your practice done for today.</p>
-          <button type="button" onClick={onClear} className="btn-primary">
-            Plan another
-          </button>
+          <p className="text-2xl font-bold">{playedMs >= 1000 ? "Nice work." : "Session ended"}</p>
+          {savedSession ? (
+            <>
+              <p role="status" className="text-muted">Session saved · {loggedMinutes} min</p>
+              <button type="button" onClick={onClear} className="btn-primary">Practise again</button>
+            </>
+          ) : playedMs >= 1000 ? (
+            <>
+              <p className="text-muted">{loggedMinutes} min · {songIds.length} {songIds.length === 1 ? "song" : "songs"}</p>
+              <div className="grid grid-cols-2 gap-2" aria-label="How did it go?">
+                <button type="button" aria-pressed={rating === "rough"} onClick={() => setRating(rating === "rough" ? undefined : "rough")} className="btn-ghost px-2 text-sm aria-pressed:border-accent aria-pressed:text-accent">Needs work</button>
+                <button type="button" aria-pressed={rating === "great"} onClick={() => setRating(rating === "great" ? undefined : "great")} className="btn-ghost px-2 text-sm aria-pressed:border-accent aria-pressed:text-accent">Ready to play</button>
+              </div>
+              {saveError && <p role="alert" className="text-danger">{saveError}</p>}
+              <button type="button" onClick={save} disabled={saving} className="btn-primary">{saving ? "Saving…" : "Save session"}</button>
+              <button type="button" onClick={onClear} disabled={saving} className="btn-ghost">Skip</button>
+            </>
+          ) : <button type="button" onClick={onClear} className="btn-primary">Choose a practice plan</button>}
         </div>
       ) : (
         <div className="flex flex-col gap-3 rounded-2xl bg-bg p-4">
@@ -258,18 +303,43 @@ function PlanRunner({
                 {run.status === "paused" ? "Resume" : "Start"}
               </button>
             )}
-            <button type="button" onClick={skip} className="btn-ghost min-h-14">
+            <button type="button" onClick={() => advance()} className="btn-ghost min-h-14">
               {run.index === plan.blocks.length - 1 ? "Finish" : "Next block"}
             </button>
           </div>
         </div>
       )}
 
-      <div className="flex gap-2">
-        <button type="button" onClick={onClear} className="btn-ghost flex-1 text-sm">
-          New plan
-        </button>
-      </div>
+      {run.status !== "done" && (
+        <>
+          <details className="rounded-xl border border-border px-3 py-2">
+            <summary className="min-h-8 cursor-pointer font-medium">Session outline</summary>
+            <ol className="flex flex-col gap-1">
+              {plan.blocks.map((b, i) => {
+                const isDone = Boolean(played[i])
+                const isNow = i === run.index
+                return (
+                  <li
+                    key={i}
+                    className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm ${
+                      isNow ? "bg-accent/15 font-semibold" : isDone ? "text-muted line-through" : ""
+                    }`}
+                  >
+                    <span className="w-10 shrink-0 tabular-nums text-muted">{b.minutes}m</span>
+                    <span className="min-w-0 flex-1 truncate">{b.label}</span>
+                    {isDone && <span aria-label="done">✓</span>}
+                  </li>
+                )
+              })}
+            </ol>
+          </details>
+          {run.status === "idle" && run.index === 0 ? (
+            <button type="button" onClick={onClear} className="btn-ghost text-sm">New plan</button>
+          ) : run.index < plan.blocks.length - 1 && (
+            <button type="button" onClick={() => advance(true)} className="btn-ghost text-sm">Finish session</button>
+          )}
+        </>
+      )}
     </div>
   )
 }

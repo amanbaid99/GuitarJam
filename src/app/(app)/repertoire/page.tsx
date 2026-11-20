@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Suspense } from "react"
-import { getLibrary } from "@/lib/data"
+import { getGoToSet, getLibrary } from "@/lib/data"
 import { SeedButton } from "../seed-button"
 import { RepertoireView } from "./repertoire-view"
 
@@ -31,7 +31,18 @@ async function Repertoire() {
     return <Starter isOwner={lib.role === "owner"} hasFamilies={lib.families.length > 0} />
   }
 
-  return <RepertoireView families={lib.families} songs={lib.songs} />
+  const goTo = await getGoToSet()
+  return (
+    <>
+      <section aria-label="Quick actions" className="card grid gap-2 sm:grid-cols-2">
+        <Link href="/practice?quick=10" className="btn-primary">Practise for 10 min</Link>
+        <Link href={goTo ? `/perform/set/${goTo}` : "/sets#my-sets"} className="btn-ghost">
+          {goTo ? "Play my go-to set" : "Choose a set"}
+        </Link>
+      </section>
+      <RepertoireView families={lib.families} songs={lib.songs} />
+    </>
+  )
 }
 
 function ListSkeleton() {
@@ -56,14 +67,12 @@ function Starter({ isOwner, hasFamilies }: { isOwner: boolean; hasFamilies: bool
           build a set for any room.
         </p>
       </div>
+      <Link href="/repertoire/add" className="btn-primary">Add your first song</Link>
       {isOwner ? (
         <SeedButton label="Load my repertoire" />
       ) : (
         !hasFamilies && <SeedButton label="Set up the 4 song groups" />
       )}
-      <Link href="/repertoire/add" className={hasFamilies || isOwner ? "btn-ghost" : "btn-primary"}>
-        Add your first song
-      </Link>
       <p className="text-xs text-muted">Tip: screenshot your notes app list and import it in one go.</p>
     </section>
   )

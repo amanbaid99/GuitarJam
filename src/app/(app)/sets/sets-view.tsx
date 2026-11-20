@@ -75,7 +75,7 @@ export function SetsView({ sets, songs }: { sets: SavedSet[]; songs: EditorSong[
           {error}
         </p>
       )}
-      <section className="flex flex-col gap-3" aria-label="My sets">
+      <section id="my-sets" className="flex scroll-mt-4 flex-col gap-3" aria-label="My sets">
         <div>
           <h2 className="text-lg font-semibold">My sets</h2>
           <p className="text-sm text-muted">Your own lists for a gig or a night, from any group.</p>

@@ -42,6 +42,8 @@ export type GroupSong = {
   chords: string | null
   family_id: string | null
   group_position: number | null
+  my_transpose: number
+  my_capo: number | null
 }
 
 export async function getSetsData() {
@@ -58,7 +60,7 @@ export async function getSetsData() {
     supabase.from("families").select("id, name, key, vibe, position").order("position").order("created_at"),
     supabase
       .from("songs")
-      .select("id, title, artist, status, key_capo, chords, family_id, group_position")
+      .select("id, title, artist, status, key_capo, chords, family_id, group_position, my_transpose, my_capo")
       .order("group_position", { nullsFirst: false })
       .order("title"),
   ])
@@ -113,4 +115,11 @@ export async function getAccount() {
       members: members.data ?? [],
     },
   }
+}
+
+export async function getGoToSet() {
+  await requireUser()
+  const db = await createClient()
+  const { data } = await db.from("sets").select("id, song_ids").eq("name", "Go-to set").order("created_at").limit(1).maybeSingle()
+  return data?.song_ids.length ? data.id : null
 }

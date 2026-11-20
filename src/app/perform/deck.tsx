@@ -3,6 +3,8 @@
 import Link from "next/link"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { LyricsView } from "@/components/lyrics-view"
+import { extractChords } from "@/lib/theory"
+import { downloadSet } from "./download-set"
 import { useWakeLock } from "@/lib/use-wake-lock"
 
 export type DeckSong = {
@@ -22,10 +24,12 @@ function forStage(chart: string): string {
   return chart.replace(/\.\s+(?=\S)/g, ".\n")
 }
 
-export function Deck({ title, songs, backHref }: { title: string; songs: DeckSong[]; backHref: string }) {
+export function Deck({ title, songs, backHref, downloadable = false }: { title: string; songs: DeckSong[]; backHref: string; downloadable?: boolean }) {
   const scroller = useRef<HTMLDivElement>(null)
   const [index, setIndex] = useState(0)
   const wake = useWakeLock()
+  const [compact, setCompact] = useState(false)
+  const [large, setLarge] = useState(true)
 
   const goTo = useCallback(
     (i: number) => {
@@ -49,6 +53,7 @@ export function Deck({ title, songs, backHref }: { title: string; songs: DeckSon
   // Arrow keys and page turner pedals (which usually send arrows or Page Up/Down).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLElement && e.target.closest("button, a, input, select, textarea")) return
       if (["ArrowRight", "PageDown", " "].includes(e.key)) {
         e.preventDefault()
         goTo(index + 1)
@@ -105,37 +110,50 @@ export function Deck({ title, songs, backHref }: { title: string; songs: DeckSon
         />
       </header>
 
+      <div className="flex flex-wrap gap-2 border-b border-border px-3 py-2" aria-label="Chart display">
+        <button type="button" onClick={() => setCompact(!compact)} aria-pressed={compact} className="btn-ghost min-h-11 px-2.5 text-sm aria-pressed:border-accent aria-pressed:text-accent">
+          Chord cues
+        </button>
+        <button type="button" onClick={() => setLarge(!large)} aria-pressed={large} className="btn-ghost min-h-11 px-2.5 text-sm aria-pressed:border-accent aria-pressed:text-accent">
+          Large text
+        </button>
+        {downloadable && <button type="button" className="btn-ghost min-h-11 px-2.5 text-sm aria-pressed:border-accent aria-pressed:text-accent" onClick={() => downloadSet(title, songs)}>Save offline</button>}
+      </div>
       <div
         ref={scroller}
         className="flex min-h-0 flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden [scrollbar-width:none]"
       >
-        {songs.map((song, i) => (
-          <section
-            key={song.id}
-            aria-roledescription="slide"
-            aria-label={`${i + 1} of ${songs.length}: ${song.title}`}
-            className="flex h-full w-full shrink-0 snap-center flex-col gap-5 overflow-y-auto px-6 pt-4 pb-8"
-          >
-            <div>
-              <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-6xl">{song.title}</h1>
-              <p className="mt-2 text-xl text-muted">
-                {[song.family, song.play].filter(Boolean).join(" · ")}
-              </p>
-            </div>
-            {song.hint && <p className="text-2xl italic text-accent">&ldquo;{song.hint}&rdquo;</p>}
-            {song.chords && (
-              <p
-                className={`font-mono leading-snug font-semibold whitespace-pre-wrap ${
-                  song.lyrics ? "text-xl text-muted sm:text-2xl" : song.chords.length > 120 ? "text-2xl sm:text-4xl" : "text-3xl sm:text-5xl"
-                }`}
-              >
-                {forStage(song.chords)}
-              </p>
-            )}
-            {song.lyrics && <LyricsView text={song.lyrics} size="stage" />}
-            {!song.chords && !song.lyrics && <p className="text-2xl text-muted">No chords saved.</p>}
-          </section>
-        ))}
+        {songs.map((song, i) => {
+          const cue = extractChords(song.chords ?? song.lyrics ?? "").join(" · ")
+          return (
+            <section
+              key={song.id}
+              aria-roledescription="slide"
+              aria-label={`${i + 1} of ${songs.length}: ${song.title}`}
+              className="flex h-full w-full shrink-0 snap-center flex-col gap-5 overflow-y-auto px-6 pt-4 pb-8"
+            >
+              <div>
+                <h1 className={`font-bold leading-tight tracking-tight ${large ? "text-4xl sm:text-6xl" : "text-2xl sm:text-4xl"}`}>{song.title}</h1>
+                <p className="mt-2 text-xl text-muted">
+                  {[song.family, song.play].filter(Boolean).join(" · ")}
+                </p>
+              </div>
+              {song.hint && <p className="text-2xl italic text-accent">&ldquo;{song.hint}&rdquo;</p>}
+              {compact && <p className={`font-mono font-semibold ${large ? "text-3xl" : "text-xl"}`}>{cue || "No chord cues saved."}</p>}
+              {!compact && song.chords && (
+                <p
+                  className={`font-mono leading-snug font-semibold whitespace-pre-wrap ${
+                    !large ? "text-base" : song.lyrics ? "text-xl text-muted sm:text-2xl" : song.chords.length > 120 ? "text-2xl sm:text-4xl" : "text-3xl sm:text-5xl"
+                  }`}
+                >
+                  {forStage(song.chords)}
+                </p>
+              )}
+              {!compact && song.lyrics && <LyricsView text={song.lyrics} size={large ? "stage" : "md"} />}
+              {!compact && !song.chords && !song.lyrics && <p className="text-2xl text-muted">No chords saved.</p>}
+            </section>
+          )
+        })}
       </div>
 
       <nav

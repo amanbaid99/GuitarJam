@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth"
 import { addDays, todayISO } from "@/lib/dates"
 import { SESSION_FEELS } from "@/lib/domain"
 import { coachPlan, type CoachInput } from "@/lib/plan/coach"
+import { templatePlan } from "@/lib/plan/template"
 import { PLAN_MINUTES, type Plan, type PlanMinutes } from "@/lib/plan/types"
 import { createClient } from "@/lib/neon/server"
 
@@ -44,12 +45,13 @@ async function planInput(minutes: PlanMinutes): Promise<CoachInput> {
 }
 
 /** Asks the AI coach (OpenRouter, server side). Falls back to the built-in plan on any problem. */
-export async function planSession(minutes: number): Promise<PlanResult> {
+export async function planSession(minutes: number, useCoach = false): Promise<PlanResult> {
   await requireUser()
   const parsed = z.union(PLAN_MINUTES.map((m) => z.literal(m))).safeParse(minutes)
   if (!parsed.success) return { ok: false, error: "Pick 10, 15, 20 or 30 minutes." }
   try {
     const input = await planInput(parsed.data as PlanMinutes)
+    if (!useCoach) return { ok: true, plan: templatePlan(input), source: "template" }
     const { plan, source, note } = await coachPlan(input)
     return { ok: true, plan, source, note }
   } catch (err) {

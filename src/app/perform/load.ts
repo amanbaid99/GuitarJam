@@ -48,7 +48,7 @@ async function familyMap() {
   return new Map((data ?? []).map((f) => [f.id, f]))
 }
 
-export async function loadFamilyDeck(familyId: string): Promise<Deck> {
+export async function loadFamilyDeck(familyId: string, knownOnly = false): Promise<Deck> {
   await requireUser()
   const supabase = await createClient()
   const families = await familyMap()
@@ -56,13 +56,14 @@ export async function loadFamilyDeck(familyId: string): Promise<Deck> {
   if (!family) return null
 
   // A group plays in the order you set on the Sets tab. Every song in it has chords.
-  const { data: songs } = await supabase
+  const query = supabase
     .from("songs")
     .select(SONG_COLUMNS)
     .eq("family_id", familyId)
     .order("group_position", { nullsFirst: false })
     .order("title")
 
+  const { data: songs } = await (knownOnly ? query.in("status", ["can_play", "polished"]) : query)
   return { title: family.name, songs: (songs ?? []).map((s) => toDeckSong(s, family)) }
 }
 

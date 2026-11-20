@@ -9,7 +9,6 @@ const TABS = [
   { href: "/sets", label: "Sets", icon: "M4 6h16M4 12h16M4 18h10" },
   { href: "/repertoire/add", label: "Add", icon: "M12 5v14M5 12h14", primary: true },
   { href: "/practice", label: "Practice", icon: "M9 4h6M12 4v3m7 6a7 7 0 1 1-14 0 7 7 0 0 1 14 0Zm-7-3v3l2 2" },
-  { href: "/metronome", label: "Metronome", icon: "M9 3h6l4 18H5L9 3Zm3 4v8m0 0 4-5" },
   {
     href: "/settings",
     label: "Settings",
@@ -50,7 +49,7 @@ export function NavBar({
       className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-bg/95 backdrop-blur"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <ul className="mx-auto grid max-w-xl grid-cols-6">
+      <ul className="mx-auto grid max-w-xl grid-cols-5">
         {TABS.map((tab) => {
           const active = tab.href === current
           const primary = "primary" in tab && tab.primary
