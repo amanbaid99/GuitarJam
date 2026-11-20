@@ -1,26 +1,10 @@
 import "server-only"
-import { cacheLife } from "next/cache"
 import { requireUser } from "@/lib/auth"
 import { withoutLeftoverGroups } from "@/lib/groups-server"
 import { loadSetSongs } from "@/lib/sets/load"
 import { createClient } from "@/lib/neon/server"
 
-/**
- * Data for the main tabs, cached in your browser only ("use cache: private":
- * never stored on the server, never shared between people).
- *
- * Why: a stale time of 5 minutes or more lets Next.js load each tab's content
- * in the background while the tab bar is on screen, so switching tabs shows
- * your songs at once instead of waiting on the server.
- *
- * Any change you save calls refresh(), which clears this cache straight away,
- * so you never see old data after an edit.
- */
-const TAB_CACHE = { stale: 600, revalidate: 600, expire: 3600 }
-
 export async function getLibrary() {
-  "use cache: private"
-  cacheLife(TAB_CACHE)
   const user = await requireUser()
   const supabase = await createClient()
   const [families, songs] = await Promise.all([
@@ -47,8 +31,6 @@ export type GroupSong = {
 }
 
 export async function getSetsData() {
-  "use cache: private"
-  cacheLife(TAB_CACHE)
   await requireUser()
   const supabase = await createClient()
   const [sets, songs, groups, rows] = await Promise.all([
@@ -81,8 +63,6 @@ export async function getSetsData() {
 }
 
 export async function getPracticeSongs() {
-  "use cache: private"
-  cacheLife(TAB_CACHE)
   await requireUser()
   const supabase = await createClient()
   const { data, error } = await supabase.from("songs").select("id, title, chords").order("title")
@@ -91,8 +71,6 @@ export async function getPracticeSongs() {
 }
 
 export async function getAddSongData() {
-  "use cache: private"
-  cacheLife(TAB_CACHE)
   await requireUser()
   const supabase = await createClient()
   const { data } = await supabase.from("families").select("*").order("position").order("created_at")
@@ -100,8 +78,6 @@ export async function getAddSongData() {
 }
 
 export async function getAccount() {
-  "use cache: private"
-  cacheLife(TAB_CACHE)
   const user = await requireUser()
   if (user.role !== "owner") return { email: user.email, role: user.role, members: null }
   const supabase = await createClient()

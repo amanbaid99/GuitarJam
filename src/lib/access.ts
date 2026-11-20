@@ -12,9 +12,3 @@ export async function canSignIn(supabase: DataClient, email: string): Promise<bo
   if (error) return false
   return data === true
 }
-
-export async function roleOf(supabase: DataClient): Promise<Role | null> {
-  const { data, error } = await supabase.rpc("my_role")
-  if (error) return null
-  return data === "owner" || data === "member" ? data : null
-}

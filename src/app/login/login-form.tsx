@@ -1,18 +1,31 @@
 "use client"
 
+import Link from "next/link"
 import { useActionState, useState } from "react"
 import { requestAccess, sendLink, signOut, verifyCode, type LoginState, type RequestState } from "./actions"
 
 const initial: LoginState = { step: "email" }
 
-type Props = { linkError?: boolean; accessError?: boolean }
+type Props = { linkError?: boolean; accessError?: boolean; serviceError?: boolean }
 
-export function LoginForm({ linkError, accessError }: Props) {
+export function LoginForm({ linkError, accessError, serviceError }: Props) {
   const [requesting, setRequesting] = useState<string | null>(null)
   const [sendState, send, sending] = useActionState(sendLink, initial)
   const [codeState, verify, verifying] = useActionState(verifyCode, initial)
 
   if (requesting !== null) return <RequestForm email={requesting} onBack={() => setRequesting(null)} />
+
+  if (serviceError) {
+    return (
+      <div className="flex flex-col gap-4">
+        <p role="alert">My Jamm couldn’t verify your session. Try reconnecting.</p>
+        <Link href="/repertoire" prefetch={false} className="btn-primary">Try again</Link>
+        <form action={signOut}>
+          <button type="submit" className="btn-ghost w-full">Sign out</button>
+        </form>
+      </div>
+    )
+  }
 
   if (accessError) {
     return (
