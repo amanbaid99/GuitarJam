@@ -1,5 +1,7 @@
 "use client"
 
+import { SongLanguageField } from "@/components/song-language-field"
+import type { SongLanguage } from "@/lib/song-languages"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useRef, useState, useTransition } from "react"
@@ -79,6 +81,7 @@ function ManualForm({ families }: { families: Family[] }) {
         {
           title: v("title"),
           artist: v("artist"),
+          language: (v("language") || null) as SongLanguage | null,
           status: v("status") as SongStatus,
           difficulty: v("difficulty") as never,
           style: v("style") as never,
@@ -104,6 +107,7 @@ function ManualForm({ families }: { families: Family[] }) {
       <Field label="Artist">
         <input name="artist" maxLength={200} className="field" />
       </Field>
+      <SongLanguageField />
       <Field label="Chords (sections welcome: Verse: Em D C)">
         <textarea
           value={chords}
@@ -175,7 +179,7 @@ type Stage =
   | { kind: "review"; songs: ReviewSong[] }
   | { kind: "done"; count: number; firstId?: string }
 
-type ReviewSong = ImportedSong & { include: boolean; status: SongStatus }
+type ReviewSong = ImportedSong & { include: boolean; status: SongStatus; language?: SongLanguage | null }
 
 function ScreenshotImport({ families }: Props) {
   const [stage, setStage] = useState<Stage>({ kind: "pick" })
@@ -232,6 +236,7 @@ function ScreenshotImport({ families }: Props) {
         chosen.map((s) => ({
           title: s.title,
           artist: s.artist ?? "",
+          language: s.language,
           status: s.status,
           difficulty: "",
           style: "",
@@ -326,6 +331,7 @@ function ScreenshotImport({ families }: Props) {
                 </select>
               </Field>
             </div>
+            <SongLanguageField value={s.language} onChange={(language) => update(i, { language })} />
             <GroupPicker
               groups={families}
               chords={s.chords ?? ""}
@@ -401,6 +407,7 @@ function PasteImport({ families }: { families: Family[] }) {
   const [text, setText] = useState("")
   const [song, setSong] = useState<PastedSong | null>(null)
   const [status, setStatus] = useState<SongStatus>("learning")
+  const [language, setLanguage] = useState<SongLanguage | null>(null)
   const [picked, setPicked] = useState<string | null>(null)
   const familyId = picked ?? (song ? suggestedGroupId(song.chords ?? "", families) : "")
   const [keepLyrics, setKeepLyrics] = useState(true)
@@ -431,6 +438,7 @@ function PasteImport({ families }: { families: Family[] }) {
           title: s.title,
           artist: s.artist ?? "",
           status,
+          language,
           difficulty: "",
           style: "",
           family_id: familyId,
@@ -508,6 +516,7 @@ function PasteImport({ families }: { families: Family[] }) {
             </select>
           </Field>
         </div>
+        <SongLanguageField value={language} onChange={setLanguage} />
         <GroupPicker groups={families} chords={song.chords ?? ""} value={familyId} onChange={setPicked} />
         <Field label="Chords by section">
           <textarea

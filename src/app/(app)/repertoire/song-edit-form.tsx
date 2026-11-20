@@ -1,5 +1,6 @@
 "use client"
 
+import { SongLanguageField } from "@/components/song-language-field"
 import { useState, useTransition } from "react"
 import { GroupPicker, suggestedGroupId } from "@/components/group-picker"
 import { DIFFICULTIES, SONG_STATUSES, STYLES } from "@/lib/domain"
@@ -29,6 +30,7 @@ export function SongEditForm({
     const edit: SongEdit = {
       title: value("title"),
       artist: value("artist"),
+      language: value("language") as SongEdit["language"],
       status: value("status") as SongEdit["status"],
       difficulty: value("difficulty") as SongEdit["difficulty"],
       style: value("style") as SongEdit["style"],
@@ -56,6 +58,7 @@ export function SongEditForm({
         <input name="artist" defaultValue={song.artist ?? ""} className="field" />
       </Field>
 
+      <SongLanguageField value={song.language} />
       <div className="grid grid-cols-2 gap-3">
         <Field label="Status">
           <select name="status" defaultValue={song.status} className="field">

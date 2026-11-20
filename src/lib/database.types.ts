@@ -180,6 +180,7 @@ export type Database = {
           id: string
           key_capo: string | null
           last_practised: string | null
+          language: "hindi" | "english" | null
           lyrics: string | null
           my_capo: number | null
           my_transpose: number
@@ -202,6 +203,7 @@ export type Database = {
           id?: string
           key_capo?: string | null
           last_practised?: string | null
+          language?: "hindi" | "english" | null
           lyrics?: string | null
           my_capo?: number | null
           my_transpose?: number
@@ -224,6 +226,7 @@ export type Database = {
           id?: string
           key_capo?: string | null
           last_practised?: string | null
+          language?: "hindi" | "english" | null
           lyrics?: string | null
           my_capo?: number | null
           my_transpose?: number
@@ -250,6 +253,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      tag_song_languages: { Args: { p_song_ids: string[]; p_language: "hindi" | "english" | null }; Returns: undefined }
       app_user_id: { Args: Record<PropertyKey, never>; Returns: string | null }
       can_sign_in: { Args: { p_email: string }; Returns: boolean }
       decide_access: { Args: { p_request_id: string; p_approve: boolean }; Returns: undefined }

@@ -26,6 +26,7 @@ const song = (over: Partial<Song>): Song => ({
   notes: null,
   needs_verify: false,
   last_practised: null,
+  language: null,
   lyrics: null,
   my_capo: null,
   my_transpose: 0,

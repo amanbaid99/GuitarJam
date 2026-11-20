@@ -1,3 +1,4 @@
+import { LANGUAGE_LABEL } from "@/lib/song-languages"
 import Link from "next/link"
 import type { SongStatus } from "@/lib/domain"
 import { DIFFICULTY_LABEL, STATUS_LABEL, STYLE_LABEL, type Song } from "@/lib/songs"
@@ -19,6 +20,7 @@ type Props = {
 export function SongCard({ song, detail }: Props) {
   const status = song.status as SongStatus
   const meta = [
+    song.language && LANGUAGE_LABEL[song.language],
     song.difficulty && DIFFICULTY_LABEL[song.difficulty as keyof typeof DIFFICULTY_LABEL],
     song.style && STYLE_LABEL[song.style as keyof typeof STYLE_LABEL],
     song.key_capo,

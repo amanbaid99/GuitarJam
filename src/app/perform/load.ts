@@ -22,7 +22,7 @@ type Row = {
 type FamilyRow = { id: string; name: string; key: string }
 
 /** A song as it should be played: your saved key and capo applied to chords and lyrics. */
-function toDeckSong(s: Row, family: FamilyRow | null): DeckSong {
+export function toDeckSong(s: Row, family: FamilyRow | null): DeckSong & { capo: number } {
   const view = chartView({
     chords: s.chords,
     lyrics: s.lyrics,
@@ -39,6 +39,7 @@ function toDeckSong(s: Row, family: FamilyRow | null): DeckSong {
     chords: view.chords,
     lyrics: view.lyrics,
     hint: s.first_line_hint,
+    capo: view.capo,
   }
 }
 

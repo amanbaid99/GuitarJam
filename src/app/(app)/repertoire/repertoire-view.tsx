@@ -1,265 +1,113 @@
 "use client"
 
-import Link from "next/link"
-import { useMemo, useState } from "react"
-import { DIFFICULTIES, SONG_STATUSES, STYLES } from "@/lib/domain"
-import { createLocalStore } from "@/lib/local-store"
-import {
-  DIFFICULTY_LABEL,
-  NO_FILTERS,
-  SORT_LABEL,
-  SORT_MODES,
-  STATUS_LABEL,
-  STYLE_LABEL,
-  groupByFamily,
-  matchesFilters,
-  sortSongs,
-  type Family,
-  type Song,
-  type SongFilters,
-  type SortMode,
-} from "@/lib/songs"
+import { useState, useTransition } from "react"
+import { LANGUAGE_LABEL, SONG_LANGUAGES, type SongLanguage } from "@/lib/song-languages"
+import { isJamReady } from "@/lib/jam"
+import { matchesFilters, NO_FILTERS, sortSongs, type Family, type Song } from "@/lib/songs"
+import { tagSongs } from "./actions"
 import { SongCard } from "./song-card"
 
-type Props = { families: Family[]; songs: Song[] }
+type Filter = "all" | SongLanguage | "untagged"
+const FILTERS = [["all", "All"], ["hindi", "Hindi"], ["english", "English"]] as const
 
-// Your last sort, remembered on this device. A to Z unless you pick another.
-const sortStore = createLocalStore<SortMode>(
-  "myjamm-song-sort-v2",
-  (raw) => (SORT_MODES.includes(raw as SortMode) ? (raw as SortMode) : null),
-  "az",
-)
+export function RepertoireView({ families, songs, initiallyTagging = false }: { families: Family[]; songs: Song[]; initiallyTagging?: boolean }) {
+  const [language, setLanguage] = useState<Filter>("all")
+  const [known, setKnown] = useState(false)
+  const [query, setQuery] = useState("")
+  const [sort, setSort] = useState<"az" | "recent" | "key">("az")
+  const [tagging, setTagging] = useState(initiallyTagging)
+  const [selected, setSelected] = useState<string[]>([])
+  const [message, setMessage] = useState("")
+  const [pending, startTransition] = useTransition()
 
-export function RepertoireView({ families, songs }: Props) {
-  const [filters, setFilters] = useState<SongFilters>(NO_FILTERS)
-  const [open, setOpen] = useState<Record<string, boolean>>({})
-  const [moreFilters, setMoreFilters] = useState(false)
-  const sort = sortStore.useValue()
-
-  const filtering =
-    filters.status !== "all" ||
-    filters.difficulty !== "all" ||
-    filters.style !== "all" ||
-    filters.query.trim() !== ""
-
-  const visible = useMemo(() => songs.filter((s) => matchesFilters(s, filters)), [songs, filters])
-  const groups = useMemo(
-    () => groupByFamily(families, visible).filter((g) => g.songs.length > 0 || (!filtering && g.family)),
-    [families, visible, filtering],
+  const visible = songs.filter((song) =>
+    (language === "all" || (language === "untagged" ? !song.language : song.language === language)) &&
+    matchesFilters(song, { ...NO_FILTERS, query }) &&
+    (!known || isJamReady(song)),
   )
-  const sortedGroups = useMemo(
-    () => (sort === "family" ? [] : sortSongs(visible, families, sort)),
-    [sort, visible, families],
-  )
+  const groups = sortSongs(visible, families, sort)
+  const untagged = songs.filter((song) => !song.language).length
 
-  // Songs per group (all of them play, in your order).
-  const playable = useMemo(() => {
-    const counts = new Map<string, number>()
-    for (const s of songs) {
-      if (s.family_id) {
-        counts.set(s.family_id, (counts.get(s.family_id) ?? 0) + 1)
-      }
-    }
-    return counts
-  }, [songs])
-
-  if (songs.length === 0) {
-    return (
-      <p className="card text-muted">
-        No songs yet. Tap Add song to type one in or import a screenshot.
-      </p>
-    )
+  function apply(next: SongLanguage | null) {
+    setMessage("")
+    startTransition(async () => {
+      const result = await tagSongs(selected, next)
+      if (!result.ok) { setMessage(result.error); return }
+      setMessage(`Updated ${selected.length} song${selected.length === 1 ? "" : "s"}.`)
+      setSelected([])
+    })
   }
-
-  const set = <K extends keyof SongFilters>(key: K, value: SongFilters[K]) =>
-    setFilters((f) => ({ ...f, [key]: value }))
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-3">
-        <input
-          type="search"
-          value={filters.query}
-          onChange={(e) => set("query", e.target.value)}
-          placeholder="Search title or artist"
-          aria-label="Search songs"
-          className="field"
-        />
-        <div className="grid grid-cols-2 gap-2">
-          <Dropdown
-            label="Show"
-            value={filters.status}
-            onChange={(v) => set("status", v as SongFilters["status"])}
-            options={[
-              ["all", "All songs"],
-              ["known", "Songs I know"],
-              ...SONG_STATUSES.map((s) => [s, STATUS_LABEL[s]] as [string, string]),
-            ]}
-          />
-          <Dropdown
-            label="Sort"
-            value={sort}
-            onChange={(v) => sortStore.set(v as SortMode)}
-            options={SORT_MODES.map((m) => [m, SORT_LABEL[m]] as [string, string])}
-          />
-        </div>
-        {moreFilters && (
-          <div className="grid grid-cols-2 gap-2">
-            <Dropdown
-              label="Difficulty"
-              value={filters.difficulty}
-              onChange={(v) => set("difficulty", v as SongFilters["difficulty"])}
-              options={[["all", "Any"], ...DIFFICULTIES.map((d) => [d, DIFFICULTY_LABEL[d]] as [string, string])]}
-            />
-            <Dropdown
-              label="Style"
-              value={filters.style}
-              onChange={(v) => set("style", v as SongFilters["style"])}
-              options={[["all", "Any"], ...STYLES.map((st) => [st, STYLE_LABEL[st]] as [string, string])]}
-            />
-          </div>
-        )}
-        <div className="flex items-center justify-between text-sm text-muted">
-          <span>
-            {filtering ? `${visible.length} of ${songs.length} songs` : `${songs.length} songs`}
-          </span>
-          <span className="flex items-center">
-            <button type="button" onClick={() => setMoreFilters((m) => !m)} className="min-h-11 px-2 text-muted">
-              {moreFilters ? "Fewer filters" : "More filters"}
-            </button>
-            {filtering && (
-              <button type="button" onClick={() => setFilters(NO_FILTERS)} className="min-h-11 px-2 text-accent">
-                Clear
-              </button>
-            )}
-          </span>
-        </div>
+      <input type="search" value={query} onChange={(event) => setQuery(event.target.value)}
+        placeholder="Search title or artist" aria-label="Search songs" className="field" />
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Song language">
+        {FILTERS.map(([value, label]) => (
+          <button type="button" key={value} onClick={() => setLanguage(value)} aria-pressed={language === value}
+            className="btn-ghost min-h-11 px-4 text-sm aria-pressed:border-accent aria-pressed:text-accent">{label}</button>
+        ))}
+        {tagging && <button type="button" onClick={() => setLanguage("untagged")} aria-pressed={language === "untagged"}
+          className="btn-ghost min-h-11 px-4 text-sm aria-pressed:border-accent aria-pressed:text-accent">Untagged ({untagged})</button>}
       </div>
-
-      {visible.length === 0 && <p className="card text-muted">No songs match these filters.</p>}
-
-      {sort !== "family" &&
-        sortedGroups.map((group, i) => (
-          <section key={group.label ?? i} className="flex flex-col gap-2">
-            {group.label && (
-              <h2 className="flex items-center justify-between px-1 pt-2 text-sm font-semibold text-muted">
-                <span>{group.label}</span>
-                <span className="tabular-nums">{group.songs.length}</span>
-              </h2>
-            )}
-            <ul className="flex flex-col gap-2">
-              {group.songs.map((song) => (
-                <li key={song.id}>
-                  <SongCard song={song} />
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))}
-
-      {sort === "family" && groups.map((group) => {
-        const key = group.family?.id ?? "unassigned"
-        // While filtering, show every matching group open so results are visible.
-        const isOpen = filtering || (open[key] ?? false)
-        return (
-          <section key={key} className="flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={() => setOpen((o) => ({ ...o, [key]: !isOpen }))}
-              aria-expanded={isOpen}
-              className="flex min-h-16 w-full items-center gap-3 rounded-3xl border border-border bg-surface-2 px-5 py-3 text-left"
-            >
-              <div className="min-w-0 flex-1">
-                <div className="text-lg font-semibold">{group.family?.name ?? "Other"}</div>
-                {group.family ? (
-                  <div className="truncate text-sm text-muted">
-                    Key of {group.family.key}
-                    {group.family.vibe ? ` · ${group.family.vibe}` : ""}
-                  </div>
-                ) : (
-                  <div className="text-sm text-muted">Songs without a group</div>
-                )}
-              </div>
-              <span className="rounded-full bg-bg px-3 py-1 text-sm tabular-nums text-muted">
-                {group.songs.length}
-              </span>
-              <Chevron open={isOpen} />
-            </button>
-            {isOpen && group.family && (playable.get(group.family.id) ?? 0) > 0 && (
-              <Link
-                href={`/perform/family/${group.family.id}`}
-                className="btn-primary min-h-12 text-base"
-              >
-                Play this group ({playable.get(group.family.id)} songs)
-              </Link>
-            )}
-            {isOpen && (
-              <ul className="flex flex-col gap-2">
-                {group.songs.map((song) => (
-                  <li key={song.id}>
-                    <SongCard song={song} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        )
-      })}
+      <div className="flex flex-wrap items-center justify-between gap-x-2 text-sm">
+        <label className="flex min-h-11 cursor-pointer items-center gap-2">
+          <input type="checkbox" checked={known} onChange={(event) => setKnown(event.target.checked)} className="h-4 w-4 accent-[var(--accent)]" />
+          Songs I know
+        </label>
+        <button type="button" disabled={pending} onClick={() => {
+          setTagging(!tagging)
+          setSelected([])
+          setMessage("")
+          if (tagging && language === "untagged") setLanguage("all")
+        }} className="min-h-11 text-accent">{tagging ? "Done tagging" : "Tag songs"}</button>
+      </div>
+      {tagging ? (
+        <section className="sticky top-2 z-10 card flex flex-col gap-2 bg-surface">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+            <p>{selected.length ? `${selected.length} selected` : "Select songs to tag"}</p>
+            <button type="button" className="min-h-11 text-accent" disabled={pending || !visible.length}
+              onClick={() => setSelected(visible.map((song) => song.id))}>Select shown ({visible.length})</button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {SONG_LANGUAGES.map((item) => <button key={item} type="button" disabled={pending || !selected.length}
+              onClick={() => apply(item)} className="btn-ghost min-h-11 px-3 text-sm">{LANGUAGE_LABEL[item]}</button>)}
+            <button type="button" disabled={pending || !selected.length} onClick={() => apply(null)}
+              className="btn-ghost min-h-11 px-3 text-sm">Clear tag</button>
+          </div>
+          <p role="status" className="text-sm text-muted">{pending ? "Saving tags…" : message}</p>
+        </section>
+      ) : (
+        <div className="flex items-center justify-between gap-2 text-sm text-muted">
+          <span>{visible.length} {visible.length === 1 ? "song" : "songs"}</span>
+          <select aria-label="Sort songs" value={sort} onChange={(event) => setSort(event.target.value as typeof sort)}
+            className="min-h-11 rounded-xl border border-border bg-surface px-2 text-fg">
+            <option value="az">A to Z</option><option value="recent">Least played</option><option value="key">Playing key</option>
+          </select>
+        </div>
+      )}
+      {!visible.length && <p className="card text-muted">No songs match. Try All or clear your search.</p>}
+      {groups.map((group) => (
+        <section key={group.label ?? "songs"} className="flex flex-col gap-2">
+          {group.label && <h2 className="px-1 text-sm font-semibold text-muted">{group.label}</h2>}
+          <ul className="flex flex-col gap-2">
+            {group.songs.map((song) => (
+              <li key={song.id}>
+                {tagging ? (
+                  <label className="card flex min-h-14 cursor-pointer items-center gap-3 px-4 py-3">
+                    <input type="checkbox" checked={selected.includes(song.id)} disabled={pending}
+                      onChange={() => setSelected((current) => current.includes(song.id)
+                        ? current.filter((id) => id !== song.id) : [...current, song.id])}
+                      className="h-5 w-5 shrink-0 accent-[var(--accent)]" />
+                    <span className="min-w-0 flex-1">{song.title}{song.artist && <small className="block text-muted">{song.artist}</small>}</span>
+                    <small className="text-muted">{song.language ? LANGUAGE_LABEL[song.language] : "Untagged"}</small>
+                  </label>
+                ) : <SongCard song={song} />}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
     </div>
-  )
-}
-
-/** A labelled native dropdown: big tap target, phone-native picker. */
-function Dropdown({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string
-  value: string
-  options: [string, string][]
-  onChange: (v: string) => void
-}) {
-  return (
-    <label className="relative flex flex-col">
-      <span className="pointer-events-none absolute top-1.5 left-4 text-[11px] font-medium text-muted">{label}</span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="min-h-14 w-full appearance-none rounded-2xl border border-border bg-surface pt-5 pr-10 pl-4 text-base font-medium text-fg outline-none focus:border-accent"
-      >
-        {options.map(([v, text]) => (
-          <option key={v} value={v}>
-            {text}
-          </option>
-        ))}
-      </select>
-      <svg
-        viewBox="0 0 24 24"
-        className="pointer-events-none absolute top-1/2 right-3 h-5 w-5 -translate-y-1/2 text-muted"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        aria-hidden="true"
-      >
-        <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    </label>
-  )
-}
-
-function Chevron({ open }: { open: boolean }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className={`h-5 w-5 shrink-0 text-muted transition-transform ${open ? "rotate-180" : ""}`}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      aria-hidden="true"
-    >
-      <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
   )
 }

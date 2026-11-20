@@ -6,18 +6,19 @@ import { RepertoireView } from "./repertoire-view"
 
 export const metadata = { title: "Songs" }
 
-export default function RepertoirePage() {
+export default function RepertoirePage({ searchParams }: PageProps<"/repertoire">) {
   return (
     <main className="flex flex-col gap-4">
       <h1 className="text-3xl font-bold tracking-tight">Songs</h1>
       <Suspense fallback={<ListSkeleton />}>
-        <Repertoire />
+        <Repertoire searchParams={searchParams} />
       </Suspense>
     </main>
   )
 }
 
-async function Repertoire() {
+async function Repertoire({ searchParams }: { searchParams: PageProps<"/repertoire">["searchParams"] }) {
+  const tag = (await searchParams).tag === "1"
   const lib = await getLibrary()
   if (!lib.ok) {
     return (
@@ -35,12 +36,12 @@ async function Repertoire() {
   return (
     <>
       <section aria-label="Quick actions" className="card grid gap-2 sm:grid-cols-2">
-        <Link href="/practice?quick=10" className="btn-primary">Practise for 10 min</Link>
+        <Link href="/jam" className="btn-primary">Start a jam</Link>
         <Link href={goTo ? `/perform/set/${goTo}` : "/sets#my-sets"} className="btn-ghost">
           {goTo ? "Play my go-to set" : "Choose a set"}
         </Link>
       </section>
-      <RepertoireView families={lib.families} songs={lib.songs} />
+      <RepertoireView families={lib.families} songs={lib.songs} initiallyTagging={tag} />
     </>
   )
 }

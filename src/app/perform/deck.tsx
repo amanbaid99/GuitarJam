@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { LyricsView } from "@/components/lyrics-view"
+import { LANGUAGE_LABEL, SONG_LANGUAGES, type SongLanguage } from "@/lib/song-languages"
 import { extractChords } from "@/lib/theory"
 import { downloadSet } from "./download-set"
 import { useWakeLock } from "@/lib/use-wake-lock"
@@ -17,6 +18,8 @@ export type DeckSong = {
   /** Your lyrics, chords inline, already in your key. */
   lyrics: string | null
   hint: string | null
+  capo?: number
+  language?: SongLanguage | null
 }
 
 /** Each sentence on its own line, so "Verse: ..." and "Chorus: ..." start fresh. */
@@ -24,7 +27,14 @@ function forStage(chart: string): string {
   return chart.replace(/\.\s+(?=\S)/g, ".\n")
 }
 
-export function Deck({ title, songs, backHref, downloadable = false }: { title: string; songs: DeckSong[]; backHref: string; downloadable?: boolean }) {
+export function Deck({ title, songs, backHref, downloadable = false, onExit, jam = false }: {
+  title: string
+  songs: DeckSong[]
+  backHref: string
+  downloadable?: boolean
+  onExit?: () => void
+  jam?: boolean
+}) {
   const scroller = useRef<HTMLDivElement>(null)
   const [index, setIndex] = useState(0)
   const wake = useWakeLock()
@@ -78,21 +88,28 @@ export function Deck({ title, songs, backHref, downloadable = false }: { title: 
     )
   }
 
+  const nextCapo = songs[index + 1]?.capo
+  const capoChange = nextCapo !== undefined && nextCapo !== songs[index]?.capo
+
   return (
     <main className="fixed inset-0 flex flex-col bg-bg text-fg">
       <header
         className="flex items-center gap-3 px-3"
         style={{ paddingTop: "max(env(safe-area-inset-top), 0.5rem)" }}
       >
-        <Link
-          href={backHref}
-          aria-label="Exit performance mode"
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-muted"
-        >
-          <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-            <path d="M6 6l12 12M18 6 6 18" strokeLinecap="round" />
-          </svg>
-        </Link>
+        {onExit ? (
+          <button type="button" onClick={onExit} className="btn-ghost min-h-11 px-3 text-sm">Exit jam</button>
+        ) : (
+          <Link
+            href={backHref}
+            aria-label="Exit performance mode"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-muted"
+          >
+            <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+              <path d="M6 6l12 12M18 6 6 18" strokeLinecap="round" />
+            </svg>
+          </Link>
+        )}
         <div className="min-w-0 flex-1 truncate text-sm text-muted">{title}</div>
         <div className="shrink-0 text-sm tabular-nums text-muted" aria-live="polite">
           {index + 1} / {songs.length}
@@ -119,6 +136,20 @@ export function Deck({ title, songs, backHref, downloadable = false }: { title: 
         </button>
         {downloadable && <button type="button" className="btn-ghost min-h-11 px-2.5 text-sm aria-pressed:border-accent aria-pressed:text-accent" onClick={() => downloadSet(title, songs)}>Save offline</button>}
       </div>
+      {jam && songs.length > 1 && (
+        <label className="flex items-center gap-2 px-3 py-2 text-sm text-muted">
+          <span className="shrink-0">Jump to song</span>
+          <select className="min-h-11 min-w-0 flex-1 rounded-xl border border-border bg-surface px-2 text-fg"
+            value={index} onChange={(event) => goTo(Number(event.target.value))}>
+            {[...SONG_LANGUAGES, null].map((language) => {
+              const options = songs.flatMap((song, position) => (song.language ?? null) === language
+                ? [<option key={song.id} value={position}>{position + 1}. {song.title}</option>]
+                : [])
+              return options.length > 0 && <optgroup key={language ?? "untagged"} label={language ? LANGUAGE_LABEL[language] : "Untagged"}>{options}</optgroup>
+            })}
+          </select>
+        </label>
+      )}
       <div
         ref={scroller}
         className="flex min-h-0 flex-1 snap-x snap-mandatory overflow-x-auto overflow-y-hidden [scrollbar-width:none]"
@@ -173,12 +204,13 @@ export function Deck({ title, songs, backHref, downloadable = false }: { title: 
           type="button"
           onClick={() => goTo(index + 1)}
           disabled={index === songs.length - 1}
-          className="btn-primary min-h-16 disabled:opacity-30"
+          className="btn-primary min-h-16 min-w-0 px-3 disabled:opacity-30"
         >
           {index < songs.length - 1 ? (
             <span className="flex min-w-0 flex-col items-center leading-tight">
               <span>Next</span>
               <span className="w-full truncate text-sm font-medium opacity-80">{songs[index + 1].title}</span>
+              {capoChange && <span className="text-xs">{nextCapo ? `Move capo to ${nextCapo}` : "Remove capo"}</span>}
             </span>
           ) : (
             "Last song"

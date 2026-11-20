@@ -14,7 +14,7 @@ export async function getLibrary() {
   const error = families.error ?? songs.error
   if (error) return { ok: false, error: error.message } as const
   const groups = await withoutLeftoverGroups(supabase, families.data ?? [], songs.data ?? [])
-  return { ok: true, role: user.role, families: groups, songs: songs.data ?? [] } as const
+  return { ok: true, role: user.role, userId: user.id, families: groups, songs: songs.data ?? [] } as const
 }
 
 export type GroupSong = {

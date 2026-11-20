@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { DIFFICULTIES, SONG_STATUSES, STYLES } from "@/lib/domain"
+import { SONG_LANGUAGES } from "@/lib/song-languages"
 import { HINT_MAX } from "@/lib/songs"
 
 // Form fields arrive as strings. Blank means "clear it".
@@ -22,6 +23,7 @@ export const songEditSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(200),
   artist: optionalText(200),
   status: z.enum(SONG_STATUSES),
+  language: optionalEnum(SONG_LANGUAGES).optional(),
   difficulty: optionalEnum(DIFFICULTIES),
   style: optionalEnum(STYLES),
   family_id: z

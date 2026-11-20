@@ -5,6 +5,7 @@ import { z } from "zod"
 import { requireUser } from "@/lib/auth"
 import { SONG_STATUSES } from "@/lib/domain"
 import { groupFor, lastPositions } from "@/lib/groups-server"
+import { SONG_LANGUAGES } from "@/lib/song-languages"
 import { songEditSchema } from "@/lib/song-schema"
 import { createClient } from "@/lib/neon/server"
 
@@ -163,6 +164,25 @@ export async function moveToGroup(songId: string, groupId: string | null): Promi
     .eq("id", songId)
   if (error) return { ok: false, error: error.message }
 
+  refresh()
+  return { ok: true }
+}
+
+export async function tagSongs(ids: string[], language: string | null): Promise<ActionResult> {
+  await requireUser()
+  const input = z.object({
+    ids: z.array(z.uuid()).min(1).max(1000),
+    language: z.enum(SONG_LANGUAGES).nullable(),
+  }).safeParse({ ids, language })
+  if (!input.success) return { ok: false, error: "Choose songs and a language." }
+
+  const db = await createClient()
+  // Use a single update, with row-level ownership enforced by the database.
+  const { error } = await db.rpc("tag_song_languages", {
+    p_song_ids: [...new Set(input.data.ids)],
+    p_language: input.data.language,
+  })
+  if (error) return { ok: false, error: "Could not update the song tags." }
   refresh()
   return { ok: true }
 }
