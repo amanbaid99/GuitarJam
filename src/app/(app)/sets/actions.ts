@@ -6,7 +6,7 @@ import { requireUser } from "@/lib/auth"
 import { buildSetProposal } from "@/lib/sets/builder"
 import { loadSetSongs } from "@/lib/sets/load"
 import { LANGUAGE_MIXES, SET_MINUTES, goToSet, templateSet, type SetProposal } from "@/lib/sets/template"
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/neon/server"
 
 export type BuildResult =
   | { ok: true; proposal: SetProposal; source: "ai" | "template"; note?: string; model?: string }

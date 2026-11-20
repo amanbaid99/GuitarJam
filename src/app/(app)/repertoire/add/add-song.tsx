@@ -10,13 +10,12 @@ import { LyricsView } from "@/components/lyrics-view"
 import type { ImportedSong } from "@/lib/import/clean"
 import { parsePastedSheet, type PastedSong } from "@/lib/import/paste"
 import { DIFFICULTY_LABEL, HINT_MAX, STATUS_LABEL, STYLE_LABEL, type Family } from "@/lib/songs"
-import { createClient } from "@/lib/supabase/client"
 import { addSongs, importScreenshot } from "./actions"
 
-type Props = { userId: string; families: Family[] }
+type Props = { families: Family[] }
 type Tab = "paste" | "screenshot" | "manual"
 
-export function AddSong({ userId, families }: Props) {
+export function AddSong({ families }: Props) {
   const [tab, setTab] = useState<Tab>("paste")
   return (
     <div className="flex flex-col gap-4">
@@ -47,7 +46,7 @@ export function AddSong({ userId, families }: Props) {
       ) : tab === "manual" ? (
         <ManualForm families={families} />
       ) : (
-        <ScreenshotImport userId={userId} families={families} />
+        <ScreenshotImport families={families} />
       )}
     </div>
   )
@@ -178,7 +177,7 @@ type Stage =
 
 type ReviewSong = ImportedSong & { include: boolean; status: SongStatus }
 
-function ScreenshotImport({ userId, families }: Props) {
+function ScreenshotImport({ families }: Props) {
   const [stage, setStage] = useState<Stage>({ kind: "pick" })
   const [preview, setPreview] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -194,27 +193,14 @@ function ScreenshotImport({ userId, families }: Props) {
       setStage({ kind: "working", step: "Preparing image..." })
       const pieces = await prepareScreenshot(file)
 
-      const supabase = createClient()
-      const stamp = Date.now()
-      const paths: string[] = []
-      for (const [i, blob] of pieces.entries()) {
-        setStage({
-          kind: "working",
-          step: pieces.length > 1 ? `Uploading ${i + 1} of ${pieces.length}...` : "Uploading...",
-        })
-        const path = `${userId}/${stamp}-${i}.jpg`
-        const { error: upErr } = await supabase.storage
-          .from("screenshots")
-          .upload(path, blob, { contentType: "image/jpeg", upsert: false })
-        if (upErr) {
-          if (paths.length) await supabase.storage.from("screenshots").remove(paths)
-          throw new Error("Upload failed. Check your connection and try again.")
-        }
-        paths.push(path)
+      if (pieces.reduce((total, piece) => total + piece.size, 0) > 4 * 1024 * 1024) {
+        throw new Error("That screenshot is too large. Try a smaller image.")
       }
+      const upload = new FormData()
+      pieces.forEach((piece) => upload.append("screenshot", piece))
 
       setStage({ kind: "working", step: "Reading the chords (this can take up to a minute)..." })
-      const res = await importScreenshot(paths)
+      const res = await importScreenshot(upload)
       if (!res.ok) {
         setError(res.error)
         setStage({ kind: "pick" })

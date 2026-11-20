@@ -13,6 +13,8 @@
     "check": "vitest run && npm run typecheck && eslint && next build"
   },
   "dependencies": {
+    "@neon/auth": "^0.8.2",
+    "@supabase/postgrest-js": "^2.119.2",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
     "next": "16.4.2",

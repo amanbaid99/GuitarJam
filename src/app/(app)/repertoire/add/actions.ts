@@ -6,47 +6,33 @@ import { requireUser } from "@/lib/auth"
 import { extractSongs, type ExtractResult } from "@/lib/import/extract"
 import { groupFor, lastPositions } from "@/lib/groups-server"
 import { songEditSchema } from "@/lib/song-schema"
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/neon/server"
 
-const MAX_IMAGE_BYTES = 6 * 1024 * 1024
+const MAX_UPLOAD_BYTES = 4 * 1024 * 1024
 const MAX_PIECES = 10
 
-/**
- * Reads the screenshot you just uploaded to your private folder (a long page
- * arrives as several pieces, top to bottom), asks the vision model for the
- * songs in it, then deletes the pieces (they are not needed after reading).
- */
-export async function importScreenshot(paths: string[]): Promise<ExtractResult> {
-  const user = await requireUser()
-  // Only your own folder: "<your user id>/<file>".
-  const own = new RegExp(`^${user.id}/[\\w.-]{1,100}$`)
-  if (!Array.isArray(paths) || paths.length === 0 || paths.length > MAX_PIECES || !paths.every((p) => own.test(p))) {
-    return { ok: false, error: "That upload does not belong to you." }
+/** Read prepared JPEG slices directly and discard them after extraction. */
+export async function importScreenshot(formData: FormData): Promise<ExtractResult> {
+  await requireUser()
+  const files = formData.getAll("screenshot")
+  if (
+    !files.length || files.length > MAX_PIECES ||
+    !files.every((file): file is File => file instanceof File && file.type === "image/jpeg" && file.size > 0)
+  ) return { ok: false, error: "Choose a screenshot to import." }
+  if (files.reduce((total, file) => total + file.size, 0) > MAX_UPLOAD_BYTES) {
+    return { ok: false, error: "That screenshot is too large. Try a smaller image." }
   }
 
-  const supabase = await createClient()
-  try {
-    const dataUrls: string[] = []
-    for (const path of paths) {
-      const { data: file, error } = await supabase.storage.from("screenshots").download(path)
-      if (error || !file) return { ok: false, error: "Could not open the uploaded image. Try again." }
-      if (file.size > MAX_IMAGE_BYTES) return { ok: false, error: "That image is too large." }
-      const type = file.type && file.type.startsWith("image/") ? file.type : "image/jpeg"
-      dataUrls.push(`data:${type};base64,${Buffer.from(await file.arrayBuffer()).toString("base64")}`)
-    }
-
-    const [families, songs] = await Promise.all([
-      supabase.from("families").select("id, key"),
-      supabase.from("songs").select("title"),
-    ])
-    return await extractSongs(
-      dataUrls,
-      families.data ?? [],
-      (songs.data ?? []).map((s) => s.title),
-    )
-  } finally {
-    await supabase.storage.from("screenshots").remove(paths)
-  }
+  const dataUrls = await Promise.all(files.map(async (file) =>
+    `data:image/jpeg;base64,${Buffer.from(await file.arrayBuffer()).toString("base64")}`,
+  ))
+  const db = await createClient()
+  const [families, songs] = await Promise.all([
+    db.from("families").select("id, key"),
+    db.from("songs").select("title"),
+  ])
+  if (families.error || songs.error) return { ok: false, error: "Could not load your songs and groups." }
+  return extractSongs(dataUrls, families.data, songs.data.map((song) => song.title))
 }
 
 const addSchema = z

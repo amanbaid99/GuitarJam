@@ -2,7 +2,8 @@ import "server-only"
 import { redirect } from "next/navigation"
 import { cache } from "react"
 import { roleOf, type Role } from "@/lib/access"
-import { createClient } from "@/lib/supabase/server"
+import { neonAuth } from "@/lib/neon/auth"
+import { createClient } from "@/lib/neon/server"
 
 export type CurrentUser = { id: string; email: string; role: Role }
 
@@ -13,14 +14,15 @@ export type CurrentUser = { id: string; email: string; role: Role }
  * touches data; proxy.ts is only a first check, and RLS guards the data.
  */
 export const requireUser = cache(async (): Promise<CurrentUser> => {
-  const supabase = await createClient()
-  const { data, error } = await supabase.auth.getClaims()
-  const claims = data?.claims
-  if (error || !claims?.sub) redirect("/login")
-  const email = String(claims.email ?? "")
-  const role = await roleOf(supabase, email)
-  if (!role) redirect("/login?error=access")
-  return { id: claims.sub, email, role }
+  const { data: session } = await neonAuth().getSession()
+  const user = session?.user
+  if (!user) redirect("/login")
+  if (!user.emailVerified) redirect("/login?error=access")
+
+  const db = await createClient()
+  const [role, ownership] = await Promise.all([roleOf(db), db.rpc("app_user_id")])
+  if (!role || ownership.error || !ownership.data) redirect("/login?error=access")
+  return { id: ownership.data, email: user.email, role }
 })
 // cache(): one check per request, however many parts of the page ask.
 

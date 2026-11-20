@@ -1,8 +1,7 @@
 import "server-only"
-import type { SupabaseClient } from "@supabase/supabase-js"
-import type { Database } from "@/lib/database.types"
+import type { DataClient } from "@/lib/neon/server"
 
-type Client = SupabaseClient<Database>
+type Client = DataClient
 
 /** Highest play position in each group, so new songs go to the end. */
 export async function lastPositions(supabase: Client, groupIds: string[]): Promise<Map<string, number>> {

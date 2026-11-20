@@ -250,6 +250,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      app_user_id: { Args: Record<PropertyKey, never>; Returns: string | null }
       can_sign_in: { Args: { p_email: string }; Returns: boolean }
       decide_access: { Args: { p_request_id: string; p_approve: boolean }; Returns: undefined }
       is_member: { Args: Record<PropertyKey, never>; Returns: boolean }

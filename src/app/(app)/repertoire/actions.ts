@@ -6,7 +6,7 @@ import { requireUser } from "@/lib/auth"
 import { SONG_STATUSES } from "@/lib/domain"
 import { groupFor, lastPositions } from "@/lib/groups-server"
 import { songEditSchema } from "@/lib/song-schema"
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/neon/server"
 
 export type ActionResult = { ok: true } | { ok: false; error: string }
 

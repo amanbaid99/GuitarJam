@@ -3,7 +3,7 @@
 import { refresh } from "next/cache"
 import { z } from "zod"
 import { requireOwner } from "@/lib/auth"
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/neon/server"
 
 export type MemberResult = { ok: true } | { ok: false; error: string }
 

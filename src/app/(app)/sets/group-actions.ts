@@ -3,7 +3,7 @@
 import { refresh } from "next/cache"
 import { z } from "zod"
 import { requireUser } from "@/lib/auth"
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/neon/server"
 import { GROUP_KEYS } from "@/lib/group-keys"
 import { parseKey } from "@/lib/theory"
 

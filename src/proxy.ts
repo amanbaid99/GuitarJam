@@ -1,8 +1,8 @@
 import type { NextRequest } from "next/server"
-import { updateSession } from "@/lib/supabase/proxy"
+import { neonAuth } from "@/lib/neon/auth"
 
-export async function proxy(request: NextRequest) {
-  return updateSession(request)
+export function proxy(request: NextRequest) {
+  return neonAuth().middleware({ loginUrl: "/login", publicRoutes: ["/login", "/auth/confirm"] })(request)
 }
 
 export const config = {

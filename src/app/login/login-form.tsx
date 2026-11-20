@@ -39,7 +39,7 @@ export function LoginForm({ linkError, accessError }: Props) {
 
   if (!onCodeStep) {
     const error =
-      sendState.error ?? (linkError ? "That link did not work. Send yourself a new one." : undefined)
+      sendState.error ?? (linkError ? "Request a new sign-in code to continue." : undefined)
     return (
       <form action={send} className="flex flex-col gap-4">
         <label className="flex flex-col gap-2">
@@ -65,7 +65,7 @@ export function LoginForm({ linkError, accessError }: Props) {
           disabled={sending}
           className={sendState.step === "email" && sendState.notInvited ? "btn-ghost" : "btn-primary"}
         >
-          {sending ? "Sending..." : "Email me a sign-in link"}
+          {sending ? "Sending..." : "Email me a sign-in code"}
         </button>
         <button type="button" onClick={() => setRequesting("")} className="min-h-11 text-sm text-muted">
           New here? <span className="text-accent underline underline-offset-4">Request access</span>
@@ -77,9 +77,7 @@ export function LoginForm({ linkError, accessError }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <p className="text-base">
-        Check <span className="font-semibold">{email}</span>. Tap the link in the email, or type
-        the code from it here. The code is handy if the link opens in a different browser from
-        this one.
+        Check <span className="font-semibold">{email}</span>. Enter the sign-in code from your email.
       </p>
       <form action={verify} className="flex flex-col gap-4">
         <input type="hidden" name="email" value={email} />

@@ -7,7 +7,7 @@ import { addDays, todayISO } from "@/lib/dates"
 import { SESSION_FEELS } from "@/lib/domain"
 import { coachPlan, type CoachInput } from "@/lib/plan/coach"
 import { PLAN_MINUTES, type Plan, type PlanMinutes } from "@/lib/plan/types"
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/neon/server"
 
 export type PlanResult =
   | { ok: true; plan: Plan; source: "ai" | "template"; note?: string }

@@ -19,6 +19,6 @@ export default function AddSongPage() {
 }
 
 async function Content() {
-  const { userId, families } = await getAddSongData()
-  return <AddSong userId={userId} families={families} />
+  const { families } = await getAddSongData()
+  return <AddSong families={families} />
 }

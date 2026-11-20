@@ -1,7 +1,7 @@
 import "server-only"
 import { requireUser } from "@/lib/auth"
 import { chartView, playLabel } from "@/lib/song-view"
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/neon/server"
 import type { DeckSong } from "./deck"
 
 type Deck = { title: string; songs: DeckSong[] } | null

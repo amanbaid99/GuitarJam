@@ -17,6 +17,7 @@ const nextConfig: NextConfig = {
     APP_VERSION,
     APP_BUILT_AT: BUILT_AT,
   },
+  experimental: { serverActions: { bodySizeLimit: "4.25mb" } },
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

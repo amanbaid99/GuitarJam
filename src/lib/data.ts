@@ -3,7 +3,7 @@ import { cacheLife } from "next/cache"
 import { requireUser } from "@/lib/auth"
 import { withoutLeftoverGroups } from "@/lib/groups-server"
 import { loadSetSongs } from "@/lib/sets/load"
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/neon/server"
 
 /**
  * Data for the main tabs, cached in your browser only ("use cache: private":
@@ -91,10 +91,10 @@ export async function getPracticeSongs() {
 export async function getAddSongData() {
   "use cache: private"
   cacheLife(TAB_CACHE)
-  const user = await requireUser()
+  await requireUser()
   const supabase = await createClient()
   const { data } = await supabase.from("families").select("*").order("position").order("created_at")
-  return { userId: user.id, families: data ?? [] }
+  return { families: data ?? [] }
 }
 
 export async function getAccount() {

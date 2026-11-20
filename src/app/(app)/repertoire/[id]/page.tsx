@@ -2,7 +2,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { Suspense } from "react"
 import { requireUser } from "@/lib/auth"
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/neon/server"
 import { SongDetail } from "./song-detail"
 
 export const metadata = { title: "Song" }

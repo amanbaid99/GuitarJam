@@ -4,12 +4,12 @@ A personal guitar practice app: planned sessions, a repertoire grouped by chord 
 quick sets for any room, and performance mode. Single user. See [HANDOFF.md](HANDOFF.md)
 for the full brief and build order.
 
-Stack: Next.js 16 (App Router, Cache Components) + TypeScript + Tailwind 4, Supabase
-(Postgres, Auth, Storage), deployed on Vercel.
+Stack: Next.js 16 (App Router, Cache Components) + TypeScript + Tailwind 4, Neon
+(Postgres, Auth, Data API), deployed on Vercel.
 
 ## Status
 
-- [x] Step 1: project setup, schema with RLS, magic-link auth, seed
+- [x] Step 1: project setup, schema with RLS, email code sign-in, seed
 - [x] Step 2: repertoire screen (families, filters, search, inline edit, one-tap status)
 - [x] Step 3: theory engine (`src/lib/theory`, tested), transpose and capo on song cards
 - [x] Theme: black / white / beige background and 6 accent colours (Settings, saved per device)
@@ -29,7 +29,7 @@ Stack: Next.js 16 (App Router, Cache Components) + TypeScript + Tailwind 4, Supa
 ## Run locally
 
 ```bash
-cp .env.example .env.local   # values for the Jam Supabase project are already filled in
+cp .env.example .env.local   # fill in the Neon test branch values below
 npm install
 npm run dev                  # http://localhost:3000
 ```
@@ -39,57 +39,35 @@ Checks: `npm test`, `npm run typecheck`, `npm run lint`, `npm run build`.
 ## Project layout
 
 ```
-supabase/migrations/   SQL schema, RLS policies, last_practised trigger, storage bucket
-src/proxy.ts           refreshes the session cookie and sends signed-out visitors to /login
-src/lib/supabase/      Supabase clients (server, browser, proxy)
-src/lib/auth.ts        requireUser(): use in every page and action that reads data
-src/lib/seed/          starter repertoire + skills loader (shared by the app and the CLI)
-src/data/              repertoire_seed.json exported from Notion
-src/app/login/         email + code sign-in
-src/app/auth/confirm/  where the magic link lands
-src/app/(app)/         signed-in screens with the bottom tab bar
-scripts/seed.ts        CLI seed (needs the service role key)
+neon/001_app.sql       app schema, membership functions and row-level security
+supabase/migrations/  historical schema for the old backend
+src/proxy.ts          redirects signed-out visitors to /login
+src/lib/neon/         server-side Neon Auth and PostgREST clients
+src/lib/auth.ts       verifies account, membership and library ownership
+src/lib/seed/         starter repertoire and skills
+src/app/login/        email-code sign-in and access requests
+src/app/(app)/        signed-in screens with the bottom tab bar
 ```
 
-## One-time Supabase setup (dashboard)
+## Neon setup
 
-1. **Authentication > URL Configuration**
-   - Site URL: your Vercel production URL (for example `https://guitar-jam-aman-projects8.vercel.app`).
-   - Redirect URLs: add `http://localhost:3000/**` and `https://*.vercel.app/**`.
-2. **Authentication > Emails > Templates**. Paste this into both **Magic Link** and
-   **Confirm signup** (the first sign-in uses Confirm signup, later ones use Magic Link):
+1. Enable Neon Auth and the Data API on the same branch. Configure the Data API
+   to use Neon Auth and leave automatic table grants disabled.
+2. Apply `neon/001_app.sql` to a fresh database after enabling both services.
+   Insert the owner's verified email in `public.members` with role `owner`.
+   When importing an existing library, set that row's `library_id` to its
+   original owner UUID after checking the backup account owns the records.
+3. Set `NEON_AUTH_BASE_URL`, `NEON_DATA_API_URL`, `NEON_AUTH_COOKIE_SECRET`
+   (use a fresh secret of at least 32 characters), and `ALLOWED_EMAIL`.
+   Allow localhost in the test branch's Auth settings for local sign-in.
+4. For deployment, set those variables in Vercel for the target branch and add
+   the deployment origin to Neon Auth's trusted origins. Configure email
+   delivery before switching production.
 
-   ```html
-   <h2>Sign in to My Jamm</h2>
-   <p><a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email">Tap to sign in</a></p>
-   <p>Or type this code in the app: <strong>{{ .Token }}</strong></p>
-   ```
+Use **Load my repertoire** on Songs to seed an empty library. The legacy CLI
+seed command applies only to Supabase backups.
 
-   The link works in any browser. The code is for when the link opens somewhere other
-   than where you started (for example the installed app on your phone).
-3. After your first successful sign-in: **Authentication > Sign In / Providers**, turn
-   off **Allow new users to sign up**. The app already rejects every email except
-   `ALLOWED_EMAIL`; this closes the door at Supabase too.
-
-## Seeding
-
-Easiest: sign in, then tap **Load my repertoire** on the Today screen. It adds the 5
-families, 63 songs and the skills ladder using your own session.
-
-Or from a terminal (needs `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`, and you must have
-signed in once):
-
-```bash
-npm run seed
-```
-
-Both are safe to run again: they only add what is missing and never overwrite edits.
-
-## Deploy (Vercel)
-
-Import the GitHub repo in Vercel, then add these environment variables:
-`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `ALLOWED_EMAIL`,
-`APP_TIME_ZONE`, `OPENROUTER_API_KEY`. Do not add the service role key.
+`APP_TIME_ZONE` and `OPENROUTER_API_KEY` configure practice dates and AI.
 
 AI runs through OpenRouter, server side only, on a chain of free models tried in order:
 `nvidia/nemotron-3.5-super-vl:free`, `google/gemma-4-31b-it:free`, `minimax/minimax-m3.1-flash:free`.

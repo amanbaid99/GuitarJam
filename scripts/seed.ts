@@ -1,5 +1,5 @@
 /**
- * Seeds families, songs and skills for the app's one user.
+ * Seeds a legacy Supabase project. For Neon, use Load my repertoire in the app.
  *
  *   npm run seed
  *
@@ -13,6 +13,7 @@
  * "Load my repertoire" button while the library is empty.
  */
 import { createClient } from "@supabase/supabase-js"
+import { PostgrestClient } from "@supabase/postgrest-js"
 import type { Database } from "../src/lib/database.types"
 import { seedUser } from "../src/lib/seed"
 
@@ -39,7 +40,10 @@ async function main() {
     throw new Error(`No user with email ${email}. Sign in to the app once, then re-run.`)
   }
 
-  const result = await seedUser(supabase, user.id)
+  const db = new PostgrestClient<Database>(`${url.replace(/\/$/, "")}/rest/v1`, {
+    headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+  })
+  const result = await seedUser(db, user.id)
   console.log(
     `Seeded for ${email}: ${result.families} families, ${result.songs} songs, ${result.skills} skills added.`,
   )

@@ -1,5 +1,5 @@
 import "server-only"
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/neon/server"
 import type { SetSong } from "./template"
 
 /** Your songs with their family name and vibe, as the set builders need them. */

@@ -3,7 +3,7 @@
 import { refresh } from "next/cache"
 import { requireUser } from "@/lib/auth"
 import { seedFamiliesOnly, seedUser } from "@/lib/seed"
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/neon/server"
 
 export type SeedState = { message?: string; error?: string }
 

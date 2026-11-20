@@ -1,5 +1,5 @@
-import type { SupabaseClient } from "@supabase/supabase-js"
-import type { Database, TablesInsert } from "@/lib/database.types"
+import type { DataClient } from "@/lib/neon/server"
+import type { TablesInsert } from "@/lib/database.types"
 import { SEED_REPERTOIRE, type SeedRepertoire } from "./repertoire"
 import { SEED_SKILLS, type SeedSkill } from "./skills"
 import { goToSet } from "@/lib/sets/template"
@@ -15,7 +15,7 @@ const songKey = (title: string, artist: string | null) =>
   `${title.trim().toLowerCase()}|${(artist ?? "").trim().toLowerCase()}`
 
 /** What a newly invited member starts with: the chord families, no songs. */
-export function seedFamiliesOnly(supabase: SupabaseClient<Database>, userId: string) {
+export function seedFamiliesOnly(supabase: Pick<DataClient, "from">, userId: string) {
   return seedUser(supabase, userId, { families: SEED_REPERTOIRE.families, songs: [] }, [])
 }
 
@@ -28,7 +28,7 @@ export function seedFamiliesOnly(supabase: SupabaseClient<Database>, userId: str
  * service role client (from scripts/seed.ts).
  */
 export async function seedUser(
-  supabase: SupabaseClient<Database>,
+  supabase: Pick<DataClient, "from">,
   userId: string,
   data: SeedRepertoire = SEED_REPERTOIRE,
   skills: SeedSkill[] = SEED_SKILLS,
